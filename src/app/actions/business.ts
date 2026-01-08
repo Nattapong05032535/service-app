@@ -9,7 +9,7 @@ export async function createOrUpdateCompany(formData: FormData): Promise<void> {
     const session = await getSession();
     if (!session) redirect("/login");
 
-    const id = formData.get("id");
+    const id = formData.get("id") as string;
     const name = formData.get("name") as string;
     const nameSecondary = formData.get("nameSecondary") as string;
     const taxId = formData.get("taxId") as string;
@@ -32,10 +32,9 @@ export async function createOrUpdateCompany(formData: FormData): Promise<void> {
                 createdBy: session.id,
             });
         }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (e: any) {
-        if (e.message?.includes("NEXT_REDIRECT")) throw e;
-        throw new Error(e.message || "Failed to save company");
+    } catch (e: unknown) {
+        if (e instanceof Error && e.message?.includes("NEXT_REDIRECT")) throw e;
+        throw new Error(e instanceof Error ? e.message : "Failed to save company");
     }
 
     revalidatePath("/dashboard");
@@ -43,7 +42,7 @@ export async function createOrUpdateCompany(formData: FormData): Promise<void> {
 }
 
 export async function createProduct(formData: FormData): Promise<void> {
-    const companyId = formData.get("companyId");
+    const companyId = formData.get("companyId") as string;
     const name = formData.get("name") as string;
     const serialNumber = formData.get("serialNumber") as string;
     const purchaseDate = formData.get("purchaseDate") as string;
@@ -84,11 +83,12 @@ export async function createWarranty(formData: FormData): Promise<void> {
             startDate: startDateStr,
             endDate: endDateStr,
             type,
+            // @ts-expect-error - pmCount might not be in the schema but used for generation
             pmCount,
             notes: notes || "",
-        }) as unknown as { id: string };
+        });
 
-        const warrantyId = result.id;
+        const warrantyId = (result as { id: string | number }).id;
 
         // Auto-generate PM schedules
         if (pmCount > 0 && pmInterval > 0) {
@@ -114,16 +114,15 @@ export async function createWarranty(formData: FormData): Promise<void> {
                 });
             }
         }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (e: any) {
-        throw new Error(e.message || "Failed to create warranty");
+    } catch (e: unknown) {
+        throw new Error(e instanceof Error ? e.message : "Failed to create warranty");
     }
 
     revalidatePath(`/product/${productId}`);
 }
 
 export async function createService(formData: FormData): Promise<void> {
-    const warrantyId = formData.get("warrantyId");
+    const warrantyId = formData.get("warrantyId") as string;
     const type = formData.get("type") as string;
     const entryTime = formData.get("entryTime") as string;
     const exitTime = formData.get("exitTime") as string;
@@ -137,15 +136,13 @@ export async function createService(formData: FormData): Promise<void> {
             exitTime,
             description,
         });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (e: any) {
-        throw new Error(e.message || "Failed to create service");
+    } catch (e: unknown) {
+        throw new Error(e instanceof Error ? e.message : "Failed to create service");
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const w = await dataProvider.getWarrantyById(warrantyId) as any;
+    const w = await dataProvider.getWarrantyById(warrantyId);
     if (w) {
-        revalidatePath(`/product/${w.productId}`);
+        revalidatePath(`/product/${(w as { productId: string | number }).productId}`);
     }
 }
 
@@ -168,14 +165,12 @@ export async function updateServiceAction(formData: FormData): Promise<void> {
             notes,
             status,
         });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (e: any) {
-        throw new Error(e.message || "Failed to update service");
+    } catch (e: unknown) {
+        throw new Error(e instanceof Error ? e.message : "Failed to update service");
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const w = await dataProvider.getWarrantyById(warrantyId) as any;
+    const w = await dataProvider.getWarrantyById(warrantyId);
     if (w) {
-        revalidatePath(`/product/${w.productId}`);
+        revalidatePath(`/product/${(w as { productId: string | number }).productId}`);
     }
 }

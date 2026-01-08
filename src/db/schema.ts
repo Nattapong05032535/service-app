@@ -50,5 +50,8 @@ export const services = mssqlTable("services", {
     entryTime: datetime2("entry_time").notNull(),
     exitTime: datetime2("exit_time").notNull(),
     description: nvarchar("description", { length: 1000 }),
+    technician: nvarchar("technician", { length: 255 }),
+    status: nvarchar("status", { length: 50 }),
+    notes: nvarchar("notes", { length: 1000 }),
     createdAt: datetime2("created_at").default(sql`GETDATE()`),
 });

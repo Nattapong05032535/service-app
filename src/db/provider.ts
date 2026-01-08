@@ -2,8 +2,36 @@ import { db as mssqlDb } from "./index";
 import { companies, products, warranties, services, users } from "./schema";
 import { eq, sql, desc, like, or, inArray, exists } from "drizzle-orm";
 import { airtableBase, TABLES } from "./airtable";
+import { 
+    User, NewUser, 
+    Company, NewCompany, 
+    Product, NewProduct, 
+    Warranty, NewWarranty, 
+    Service, NewService,
+    ProductWithLatestWarranty,
+    ServiceWithWarranty,
+    CompanyInput, ProductInput, WarrantyInput, ServiceInput
+} from "@/types/database";
+import { FieldSet } from "airtable";
 
 const isAirtable = process.env.DB_TYPE === 'airtable';
+
+function cleanDataForAirtable(data: Record<string, unknown>): FieldSet {
+    const cleaned: Record<string, string | number | boolean | readonly string[] | undefined> = {};
+    for (const key in data) {
+        const val = data[key];
+        if (val !== null && val !== undefined) {
+            // Convert specific linked fields to arrays if needed by Airtable
+            if (['companyId', 'productId', 'warrantyId', 'createdBy'].includes(key)) {
+                cleaned[key] = [val.toString()];
+            } else if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean' || Array.isArray(val)) {
+                // We use a broader cast here for FieldSet compatibility
+                (cleaned as Record<string, unknown>)[key] = val;
+            }
+        }
+    }
+    return cleaned as unknown as FieldSet;
+}
 
 export const dataProvider = {
     // === USERS ===
@@ -22,11 +50,11 @@ export const dataProvider = {
         }
     },
 
-    async createUser(data: any) {
+    async createUser(data: NewUser) {
         if (isAirtable) {
-            // Airtable create returns a single record when passing an object, but SDK types can be tricky
-            const record = await airtableBase(TABLES.USERS).create(data) as any;
-            return { id: record.id, ...record.fields };
+            const cleaned = cleanDataForAirtable(data as unknown as Record<string, unknown>);
+            const record = await airtableBase(TABLES.USERS).create(cleaned) as unknown as { id: string, fields: FieldSet };
+            return { id: record.id, ...record.fields } as unknown as User;
         } else {
             await mssqlDb.insert(users).values(data);
             const [user] = await mssqlDb.select().from(users).where(eq(users.username, data.username));
@@ -91,15 +119,16 @@ export const dataProvider = {
         }
     },
 
-    async getCompanyById(id: any) {
+    async getCompanyById(id: string | number) {
         if (isAirtable) {
             try {
-                const record = await airtableBase(TABLES.COMPANIES).find(id);
+                const record = await airtableBase(TABLES.COMPANIES).find(id.toString());
+                const fields = record.fields as FieldSet;
                 return {
                     id: record.id,
-                    ...record.fields,
-                    createdBy: Array.isArray(record.fields.createdBy) ? record.fields.createdBy[0] : record.fields.createdBy
-                };
+                    ...fields,
+                    createdBy: Array.isArray(fields.createdBy) ? fields.createdBy[0] : (fields.createdBy as string)
+                } as unknown as Company;
             } catch { return null; }
         } else {
             const [company] = await mssqlDb.select().from(companies).where(eq(companies.id, Number(id)));
@@ -108,7 +137,7 @@ export const dataProvider = {
     },
 
     // === PRODUCTS ===
-    async getProductsByCompany(companyId: any) {
+    async getProductsByCompany(companyId: string | number) {
         if (isAirtable) {
             const records = await airtableBase(TABLES.PRODUCTS).select().all();
             return records
@@ -123,15 +152,16 @@ export const dataProvider = {
         }
     },
 
-    async getProductById(id: any) {
+    async getProductById(id: string | number) {
         if (isAirtable) {
             try {
-                const record = await airtableBase(TABLES.PRODUCTS).find(id);
+                const record = await airtableBase(TABLES.PRODUCTS).find(id.toString());
+                const fields = record.fields as FieldSet;
                 return {
                     id: record.id,
-                    ...record.fields,
-                    companyId: Array.isArray(record.fields.companyId) ? record.fields.companyId[0] : record.fields.companyId
-                };
+                    ...fields,
+                    companyId: Array.isArray(fields.companyId) ? fields.companyId[0] : (fields.companyId as string)
+                } as unknown as Product;
             } catch { return null; }
         } else {
             const [product] = await mssqlDb.select().from(products).where(eq(products.id, Number(id)));
@@ -139,8 +169,83 @@ export const dataProvider = {
         }
     },
 
+    async getAllProducts(query?: string): Promise<ProductWithLatestWarranty[]> {
+        if (isAirtable) {
+            let filter = '';
+            if (query) {
+                filter = `OR(SEARCH('${query.toLowerCase()}', LOWER({name})), SEARCH('${query.toLowerCase()}', LOWER({serialNumber})))`;
+            }
+            const productRecords = await airtableBase(TABLES.PRODUCTS).select({
+                filterByFormula: filter
+            }).all();
+            
+            const companyRecords = await airtableBase(TABLES.COMPANIES).select().all();
+            const warrantyRecords = await airtableBase(TABLES.WARRANTIES).select().all();
+
+            return productRecords.map(r => {
+                const fields = r.fields as FieldSet;
+                const companyId = Array.isArray(fields.companyId) ? fields.companyId[0] : (fields.companyId as string);
+                const company = companyRecords.find(c => c.id === companyId);
+                const productWarranties = warrantyRecords
+                    .map(w => {
+                        const wFields = w.fields as FieldSet;
+                        return {
+                            id: w.id,
+                            ...wFields,
+                            productId: Array.isArray(wFields.productId) ? wFields.productId[0] : (wFields.productId as string)
+                        };
+                    })
+                    .filter(w => w.productId === r.id);
+                
+                const latestWarranty = productWarranties.sort((a, b) => {
+                    const dateA = new Date((a as { endDate?: string }).endDate || 0).getTime();
+                    const dateB = new Date((b as { endDate?: string }).endDate || 0).getTime();
+                    return dateB - dateA;
+                })[0];
+
+                return {
+                    ...fields,
+                    id: r.id,
+                    companyId,
+                    companyName: company ? (company.fields as FieldSet).name as string : 'Unknown',
+                    latestWarranty: latestWarranty ? {
+                        ...latestWarranty,
+                        startDate: new Date((latestWarranty as { startDate?: string }).startDate || 0),
+                        endDate: new Date((latestWarranty as { endDate?: string }).endDate || 0)
+                    } : null
+                } as unknown as ProductWithLatestWarranty;
+            });
+        } else {
+            const productsWithCompany = await mssqlDb.select({
+                product: products,
+                company: companies
+            })
+            .from(products)
+            .innerJoin(companies, eq(products.companyId, companies.id))
+            .where(query ? or(
+                like(products.name, `%${query}%`),
+                like(products.serialNumber, `%${query}%`)
+            ) : undefined);
+            
+            const productIds = productsWithCompany.map(p => p.product.id);
+            if (productIds.length === 0) return [];
+            
+            const allWarranties = await mssqlDb.select().from(warranties).where(inArray(warranties.productId, productIds));
+            
+            return productsWithCompany.map(p => {
+                const productWarranties = allWarranties.filter(w => w.productId === p.product.id);
+                const latestWarranty = productWarranties.sort((a, b) => b.endDate.getTime() - a.endDate.getTime())[0];
+                return {
+                    ...p.product,
+                    companyName: p.company.name,
+                    latestWarranty
+                };
+            });
+        }
+    },
+
     // === WARRANTIES ===
-    async getAllWarrantiesForProducts(productIds: any[]) {
+    async getAllWarrantiesForProducts(productIds: (string | number)[]) {
         if (isAirtable) {
             if (productIds.length === 0) return [];
             const records = await airtableBase(TABLES.WARRANTIES).select().all();
@@ -157,7 +262,7 @@ export const dataProvider = {
         }
     },
 
-    async getWarrantiesByProduct(productId: any) {
+    async getWarrantiesByProduct(productId: string | number) {
         if (isAirtable) {
             const records = await airtableBase(TABLES.WARRANTIES).select({
                 sort: [{ field: 'endDate', direction: 'desc' }]
@@ -177,7 +282,7 @@ export const dataProvider = {
     },
 
     // === SERVICES ===
-    async getServicesByProduct(productId: any) {
+    async getServicesByProduct(productId: string | number): Promise<ServiceWithWarranty[]> {
         if (isAirtable) {
             // 1. Get all warranties for this product
             const productWarranties = await this.getWarrantiesByProduct(productId);
@@ -193,18 +298,19 @@ export const dataProvider = {
             // 3. Filter services by warrantyId and return with warranty info
             return records
                 .map(r => {
-                    const wId = Array.isArray(r.fields.warrantyId) ? r.fields.warrantyId[0] : r.fields.warrantyId;
+                    const fields = r.fields as FieldSet;
+                    const wId = Array.isArray(fields.warrantyId) ? fields.warrantyId[0] : (fields.warrantyId as string);
                     const warranty = productWarranties.find(w => w.id === wId);
                     return {
                         service: {
                             id: r.id,
-                            ...r.fields,
+                            ...fields,
                             warrantyId: wId
-                        },
-                        warranty: warranty || {}
+                        } as unknown as Service,
+                        warranty: (warranty || {}) as Warranty
                     };
                 })
-                .filter(item => item.service.warrantyId && warrantyIds.includes(item.service.warrantyId));
+                .filter(item => item.service.warrantyId && warrantyIds.includes(item.service.warrantyId as unknown as string));
         } else {
             return await mssqlDb.select({
                 service: services,
@@ -218,113 +324,110 @@ export const dataProvider = {
     },
 
     // === CREATIONS ===
-    async createCompany(data: any) {
+    async createCompany(data: CompanyInput) {
         if (isAirtable) {
-            const formattedData = {
-                ...data,
-                createdBy: (data.createdBy && data.createdBy.toString().startsWith('rec')) ? [data.createdBy] : undefined
-            };
-            const record = await airtableBase(TABLES.COMPANIES).create(formattedData) as any;
-            return { id: record.id, ...record.fields };
+            const cleaned = cleanDataForAirtable(data as unknown as Record<string, unknown>);
+            const record = await airtableBase(TABLES.COMPANIES).create(cleaned) as unknown as { id: string, fields: FieldSet };
+            return { id: record.id, ...record.fields } as unknown as Company;
         } else {
-            await mssqlDb.insert(companies).values(data);
+            await mssqlDb.insert(companies).values({
+                ...data,
+                createdBy: data.createdBy ? Number(data.createdBy) : null,
+            } as NewCompany);
             return { success: true };
         }
     },
 
-    async updateCompany(id: any, data: any) {
+    async updateCompany(id: string | number, data: Partial<CompanyInput>) {
         if (isAirtable) {
-            const record = await airtableBase(TABLES.COMPANIES).update(id, data) as any;
-            return { id: record.id, ...record.fields };
+            const cleaned = cleanDataForAirtable(data as unknown as Record<string, unknown>);
+            // Airtable update doesn't like some fields being present if they are not to be updated
+            delete (cleaned as Record<string, unknown>).id; 
+            const record = await airtableBase(TABLES.COMPANIES).update(id.toString(), cleaned) as unknown as { id: string, fields: FieldSet };
+            return { id: record.id, ...record.fields } as unknown as Company;
         } else {
-            await mssqlDb.update(companies).set(data).where(eq(companies.id, Number(id)));
+            await mssqlDb.update(companies).set({
+                ...data,
+                createdBy: data.createdBy ? Number(data.createdBy) : undefined,
+            } as Partial<NewCompany>).where(eq(companies.id, Number(id)));
             return { success: true };
         }
     },
 
-    async createProduct(data: any) {
+    async createProduct(data: ProductInput) {
         if (isAirtable) {
-            const formattedData = {
-                ...data,
-                companyId: (data.companyId && data.companyId.toString().startsWith('rec')) ? [data.companyId] : undefined
-            };
-            const record = await airtableBase(TABLES.PRODUCTS).create(formattedData) as any;
-            return { id: record.id, ...record.fields };
+            const cleaned = cleanDataForAirtable(data as unknown as Record<string, unknown>);
+            const record = await airtableBase(TABLES.PRODUCTS).create(cleaned) as unknown as { id: string, fields: FieldSet };
+            return { id: record.id, ...record.fields } as unknown as Product;
         } else {
             await mssqlDb.insert(products).values({
                 ...data,
-                companyId: Number(data.companyId)
-            });
+                companyId: data.companyId ? Number(data.companyId) : null,
+                purchaseDate: data.purchaseDate ? new Date(data.purchaseDate) : null,
+            } as NewProduct);
             return { success: true };
         }
     },
 
-    async createWarranty(data: any) {
+    async createWarranty(data: WarrantyInput) {
         if (isAirtable) {
-            const formattedData = {
-                ...data,
-                productId: (data.productId && data.productId.toString().startsWith('rec')) ? [data.productId] : undefined
-            };
-            const record = await airtableBase(TABLES.WARRANTIES).create(formattedData) as any;
-            return { id: record.id, ...record.fields };
+            const cleaned = cleanDataForAirtable(data as unknown as Record<string, unknown>);
+            const record = await airtableBase(TABLES.WARRANTIES).create(cleaned) as unknown as { id: string, fields: FieldSet };
+            return { id: record.id, ...record.fields } as unknown as Warranty;
         } else {
             await mssqlDb.insert(warranties).values({
                 ...data,
-                productId: Number(data.productId),
+                productId: data.productId ? Number(data.productId) : null,
                 startDate: new Date(data.startDate),
                 endDate: new Date(data.endDate)
-            });
+            } as NewWarranty);
             return { success: true };
         }
     },
 
-    async createService(data: any) {
+    async createService(data: ServiceInput) {
         if (isAirtable) {
-            const formattedData = {
-                ...data,
-                warrantyId: (data.warrantyId && data.warrantyId.toString().startsWith('rec')) ? [data.warrantyId] : undefined
-            };
-            const record = await airtableBase(TABLES.SERVICES).create(formattedData) as any;
-            return { id: record.id, ...record.fields };
+            const cleaned = cleanDataForAirtable(data as unknown as Record<string, unknown>);
+            const record = await airtableBase(TABLES.SERVICES).create(cleaned) as unknown as { id: string, fields: FieldSet };
+            return { id: record.id, ...record.fields } as unknown as Service;
         } else {
             await mssqlDb.insert(services).values({
                 ...data,
-                warrantyId: Number(data.warrantyId),
+                warrantyId: data.warrantyId ? Number(data.warrantyId) : null,
                 entryTime: new Date(data.entryTime),
                 exitTime: new Date(data.exitTime)
-            });
+            } as NewService);
             return { success: true };
         }
     },
 
-    async updateService(id: any, data: any) {
+    async updateService(id: string | number, data: Partial<ServiceInput>) {
         if (isAirtable) {
-            const formattedData = {
-                ...data,
-                warrantyId: (data.warrantyId && data.warrantyId.toString().startsWith('rec')) ? [data.warrantyId] : undefined
-            };
-            const record = await airtableBase(TABLES.SERVICES).update(id, formattedData) as any;
-            return { id: record.id, ...record.fields };
+            const cleaned = cleanDataForAirtable(data as unknown as Record<string, unknown>);
+            delete (cleaned as Record<string, unknown>).id;
+            const record = await airtableBase(TABLES.SERVICES).update(id.toString(), cleaned) as unknown as { id: string, fields: FieldSet };
+            return { id: record.id, ...record.fields } as unknown as Service;
         } else {
             await mssqlDb.update(services).set({
                 ...data,
                 warrantyId: data.warrantyId ? Number(data.warrantyId) : undefined,
                 entryTime: data.entryTime ? new Date(data.entryTime) : undefined,
                 exitTime: data.exitTime ? new Date(data.exitTime) : undefined
-            }).where(eq(services.id, Number(id)));
+            } as Partial<NewService>).where(eq(services.id, Number(id)));
             return { success: true };
         }
     },
 
-    async getWarrantyById(id: any) {
+    async getWarrantyById(id: string | number) {
         if (isAirtable) {
             try {
-                const record = await airtableBase(TABLES.WARRANTIES).find(id);
+                const record = await airtableBase(TABLES.WARRANTIES).find(id.toString());
+                const fields = record.fields as FieldSet;
                 return {
                     id: record.id,
-                    ...record.fields,
-                    productId: Array.isArray(record.fields.productId) ? record.fields.productId[0] : record.fields.productId
-                };
+                    ...fields,
+                    productId: Array.isArray(fields.productId) ? fields.productId[0] : (fields.productId as string)
+                } as unknown as Warranty;
             } catch { return null; }
         } else {
             const [w] = await mssqlDb.select().from(warranties).where(eq(warranties.id, Number(id)));
