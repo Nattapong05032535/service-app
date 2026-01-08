@@ -433,5 +433,133 @@ export const dataProvider = {
             const [w] = await mssqlDb.select().from(warranties).where(eq(warranties.id, Number(id)));
             return w || null;
         }
+    },
+
+    async getExportData() {
+        if (isAirtable) {
+            const productRecords = await airtableBase(TABLES.PRODUCTS).select().all();
+            const companyRecords = await airtableBase(TABLES.COMPANIES).select().all();
+            const warrantyRecords = await airtableBase(TABLES.WARRANTIES).select().all();
+            const serviceRecords = await airtableBase(TABLES.SERVICES).select({
+                filterByFormula: "{type} = 'PM'"
+            }).all();
+            // const userRecords = await airtableBase(TABLES.USERS).select().all();
+
+            return productRecords.map(r => {
+                const fields = r.fields as FieldSet;
+                const companyId = Array.isArray(fields.companyId) ? fields.companyId[0] : (fields.companyId as string);
+                const company = companyRecords.find(c => c.id === companyId);
+                const companyFields = company?.fields as FieldSet;
+                
+                // const creatorId = companyFields && Array.isArray(companyFields.createdBy) ? companyFields.createdBy[0] : companyFields?.createdBy;
+                // const creator = userRecords.find(u => u.id === creatorId);
+
+                const productWarranties = warrantyRecords
+                    .map(w => {
+                        const wFields = w.fields as FieldSet;
+                        return {
+                            id: w.id,
+                            ...wFields,
+                            productId: Array.isArray(wFields.productId) ? wFields.productId[0] : (wFields.productId as string)
+                        };
+                    })
+                    .filter(w => w.productId === r.id);
+                
+                const latestWarranty = productWarranties.sort((a, b) => {
+                    const dateA = new Date((a as { endDate?: string }).endDate || 0).getTime();
+                    const dateB = new Date((b as { endDate?: string }).endDate || 0).getTime();
+                    return dateB - dateA;
+                })[0];
+
+                let warrantyStatus = "N/A";
+                let warrantyStartDate = "-";
+                let warrantyEndDate = "-";
+                let pmStatus = "N/A";
+
+                if (latestWarranty) {
+                    const now = new Date();
+                    const endDate = new Date((latestWarranty as { endDate?: string }).endDate || 0);
+                    const startDate = new Date((latestWarranty as { startDate?: string }).startDate || 0);
+                    
+                    warrantyStatus = endDate > now ? "Active" : "Expired";
+                    warrantyStartDate = startDate.toLocaleDateString('th-TH');
+                    warrantyEndDate = endDate.toLocaleDateString('th-TH');
+
+                    const pmServices = serviceRecords.filter(s => {
+                        const sFields = s.fields as FieldSet;
+                        const wId = Array.isArray(sFields.warrantyId) ? sFields.warrantyId[0] : sFields.warrantyId;
+                        return wId === latestWarranty.id;
+                    });
+
+                    if (pmServices.length > 0) {
+                        const allDone = pmServices.every(s => (s.fields as FieldSet).status === "เสร็จสิ้น");
+                        pmStatus = allDone ? "Expired" : "Active";
+                    } else {
+                        pmStatus = "Expired";
+                    }
+                }
+
+                return {
+                    productName: fields.name as string,
+                    purchaseDate: fields.purchaseDate ? new Date(fields.purchaseDate as string).toLocaleDateString('th-TH') : "-",
+                    serialNumber: fields.serialNumber as string,
+                    salesName: fields.contactPerson as string || "-",
+                    warrantyStatus,
+                    warrantyStartDate,
+                    warrantyEndDate,
+                    pmStatus,
+                    companyName: companyFields?.name as string || "-"
+                };
+            });
+        } else {
+            const results = await mssqlDb.select({
+                product: products,
+                company: companies,
+                user: users
+            })
+            .from(products)
+            .innerJoin(companies, eq(products.companyId, companies.id))
+            .leftJoin(users, eq(companies.createdBy, users.id));
+
+            const allWarranties = await mssqlDb.select().from(warranties);
+            const allServices = await mssqlDb.select().from(services).where(eq(services.type, 'PM'));
+
+            return results.map(r => {
+                const productWarranties = allWarranties.filter(w => w.productId === r.product.id);
+                const latestWarranty = productWarranties.sort((a, b) => b.endDate.getTime() - a.endDate.getTime())[0];
+                
+                let warrantyStatus = "N/A";
+                let warrantyStartDate = "-";
+                let warrantyEndDate = "-";
+                let pmStatus = "N/A";
+
+                if (latestWarranty) {
+                    const now = new Date();
+                    warrantyStatus = latestWarranty.endDate > now ? "Active" : "Expired";
+                    warrantyStartDate = latestWarranty.startDate.toLocaleDateString('th-TH');
+                    warrantyEndDate = latestWarranty.endDate.toLocaleDateString('th-TH');
+
+                    const pmServices = allServices.filter(s => s.warrantyId === latestWarranty.id);
+                    if (pmServices.length > 0) {
+                        const allDone = pmServices.every(s => s.status === "เสร็จสิ้น");
+                        pmStatus = allDone ? "Expired" : "Active";
+                    } else {
+                        pmStatus = "Expired";
+                    }
+                }
+
+                return {
+                    productName: r.product.name,
+                    purchaseDate: r.product.purchaseDate ? r.product.purchaseDate.toLocaleDateString('th-TH') : "-",
+                    serialNumber: r.product.serialNumber,
+                    salesName: r.user?.username || "System",
+                    warrantyStatus,
+                    warrantyStartDate,
+                    warrantyEndDate,
+                    pmStatus,
+                    companyName: r.company.name
+                };
+            });
+        }
     }
 };

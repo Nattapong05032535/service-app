@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { Button } from "./ui/button";
+import { ConditionalExportButton } from "./ConditionalExportButton";
 
 export async function Navbar() {
     const session = await getSession();
@@ -23,6 +24,7 @@ export async function Navbar() {
                     {session ? (
                         <div className="flex items-center gap-4">
                             <span className="text-sm text-muted-foreground italic">Welcome, {session.username}</span>
+                            <ConditionalExportButton />
                             <form action="/api/auth/logout" method="POST">
                                 <Button variant="outline" size="sm">Logout</Button>
                             </form>

@@ -26,7 +26,7 @@ export function AddWarrantyDialog({ productId }: { productId: string }) {
         <>
             <Button
                 onClick={() => setIsOpen(true)}
-                className="rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all gap-2 px-4 shadow-primary/25"
+                className="rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all gap-2 px-4"
             >
                 <Plus className="w-5 h-5" />
                 <span className="font-bold">เพิ่มความคุ้มครอง / MA</span>
