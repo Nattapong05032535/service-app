@@ -9,19 +9,26 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { AddProductDialog } from "@/components/AddProductDialog";
 
-export default async function CompanyDetailPage({
-    params,
-    searchParams
-}: {
-    params: Promise<{ id: string }>,
-    searchParams: Promise<{ q?: string }>
-}) {
+type Props = {
+    params: Promise<{ id: string }>;
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+};
+
+export default async function CompanyDetailPage(props: Props) {
     const session = await getSession();
     if (!session) redirect("/login");
 
-    const { id: companyId } = await params;
-    const { q: query } = await searchParams;
-    const company = await dataProvider.getCompanyById(companyId) as any;
+    const params = await props.params;
+    const searchParams = await props.searchParams;
+    
+    const companyId = params.id;
+    const query = typeof searchParams.q === 'string' ? searchParams.q : undefined;
+    const company = await dataProvider.getCompanyById(companyId) as { 
+        name: string; 
+        nameSecondary?: string; 
+        taxId?: string; 
+        contactInfo?: string; 
+    } | null;
 
     if (!company) notFound();
 
@@ -29,8 +36,9 @@ export default async function CompanyDetailPage({
 
     // Apply filtering
     const filteredProducts = query
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ? companyProducts.filter((p: any) =>
-            p.name.toLowerCase().includes(query.toLowerCase()) ||
+            p.name?.toLowerCase().includes(query.toLowerCase()) ||
             (p.serialNumber && p.serialNumber.toLowerCase().includes(query.toLowerCase())) ||
             (p.branch && p.branch.toLowerCase().includes(query.toLowerCase()))
         )
@@ -38,8 +46,14 @@ export default async function CompanyDetailPage({
 
     // Fetch all warranties for these products in one go (using filtered ones for display, but maybe all for logic)
     // Actually using filteredProducts is enough for display
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const productIds = filteredProducts.map((p: any) => p.id);
-    const allWarranties = await dataProvider.getAllWarrantiesForProducts(productIds) as any[];
+    const allWarranties = await dataProvider.getAllWarrantiesForProducts(productIds) as unknown as {
+        productId: string | number;
+        endDate: string | Date;
+        startDate: string | Date;
+        type: string;
+    }[];
 
     const now = new Date();
 
@@ -102,10 +116,11 @@ export default async function CompanyDetailPage({
                                 <p className="text-muted-foreground">{query ? "ไม่พบสินค้าที่ตรงกับการค้นหา" : "ไม่พบข้อมูลสินค้าสำหรับบริษัทนี้"}</p>
                             </div>
                         ) : (
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             filteredProducts.map((product: any) => {
                                 const activeW = allWarranties
-                                    .filter((w: any) => w.productId === product.id)
-                                    .sort((a: any, b: any) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime())[0];
+                                    .filter((w) => w.productId === product.id)
+                                    .sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime())[0];
 
                                 const oneMonthFromNow = new Date(now);
                                 oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);

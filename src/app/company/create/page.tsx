@@ -14,6 +14,7 @@ export default async function CompanyFormPage({ params }: { params: Promise<{ id
 
     const resolvedParams = await params;
     const id = resolvedParams.id;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let companyData: any = null;
 
     if (id) {

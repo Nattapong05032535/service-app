@@ -2,7 +2,7 @@ import { dataProvider } from "@/db/provider";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Plus, Building2, ChevronRight, Hash, Search } from "lucide-react";
@@ -55,6 +55,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 </Card>
             ) : (
                 <div className="grid gap-4">
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     {allCompanies.map((company: any) => (
                         <Link key={company.id} href={`/company/${company.id}`}>
                             <Card className="hover:border-primary transition-all group cursor-pointer overflow-hidden border-l-4 border-l-primary">
