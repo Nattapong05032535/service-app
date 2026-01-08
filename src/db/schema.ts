@@ -40,6 +40,7 @@ export const warranties = mssqlTable("warranties", {
     startDate: datetime2("start_date").notNull(),
     endDate: datetime2("end_date").notNull(),
     type: nvarchar("type", { length: 50 }).default("Warranty"), // Warranty or MA
+    notes: nvarchar("notes", { length: 1000 }),
     createdAt: datetime2("created_at").default(sql`GETDATE()`),
 });
 

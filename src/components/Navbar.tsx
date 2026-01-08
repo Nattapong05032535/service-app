@@ -17,6 +17,7 @@ export async function Navbar() {
                         <div className="hidden md:flex gap-4 text-sm font-medium">
                             <Link href="/dashboard" className="hover:text-primary transition-colors">Dashboard</Link>
                             <Link href="/products" className="hover:text-primary transition-colors">Products</Link>
+                            <Link href="/import" className="hover:text-primary transition-colors">Import</Link>
                         </div>
                     )}
                 </div>

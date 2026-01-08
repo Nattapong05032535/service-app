@@ -136,6 +136,20 @@ export const dataProvider = {
         }
     },
 
+    async findCompanyByName(name: string) {
+        if (isAirtable) {
+            const records = await airtableBase(TABLES.COMPANIES).select({
+                filterByFormula: `{name} = '${name.replace(/'/g, "\\'")}'`,
+                maxRecords: 1
+            }).firstPage();
+            if (records.length === 0) return null;
+            return { id: records[0].id, ...records[0].fields } as unknown as Company;
+        } else {
+            const [company] = await mssqlDb.select().from(companies).where(eq(companies.name, name));
+            return company || null;
+        }
+    },
+
     // === PRODUCTS ===
     async getProductsByCompany(companyId: string | number) {
         if (isAirtable) {
@@ -330,18 +344,19 @@ export const dataProvider = {
             const record = await airtableBase(TABLES.COMPANIES).create(cleaned) as unknown as { id: string, fields: FieldSet };
             return { id: record.id, ...record.fields } as unknown as Company;
         } else {
-            await mssqlDb.insert(companies).values({
+            const values = {
                 ...data,
                 createdBy: data.createdBy ? Number(data.createdBy) : null,
-            } as NewCompany);
-            return { success: true };
+            } as NewCompany;
+            await mssqlDb.insert(companies).values(values);
+            const [company] = await mssqlDb.select().from(companies).where(eq(companies.name, values.name)).orderBy(desc(companies.id));
+            return company;
         }
     },
 
     async updateCompany(id: string | number, data: Partial<CompanyInput>) {
         if (isAirtable) {
             const cleaned = cleanDataForAirtable(data as unknown as Record<string, unknown>);
-            // Airtable update doesn't like some fields being present if they are not to be updated
             delete (cleaned as Record<string, unknown>).id; 
             const record = await airtableBase(TABLES.COMPANIES).update(id.toString(), cleaned) as unknown as { id: string, fields: FieldSet };
             return { id: record.id, ...record.fields } as unknown as Company;
@@ -360,12 +375,16 @@ export const dataProvider = {
             const record = await airtableBase(TABLES.PRODUCTS).create(cleaned) as unknown as { id: string, fields: FieldSet };
             return { id: record.id, ...record.fields } as unknown as Product;
         } else {
-            await mssqlDb.insert(products).values({
+            const values = {
                 ...data,
                 companyId: data.companyId ? Number(data.companyId) : null,
                 purchaseDate: data.purchaseDate ? new Date(data.purchaseDate) : null,
-            } as NewProduct);
-            return { success: true };
+            } as NewProduct;
+            await mssqlDb.insert(products).values(values);
+            const [product] = await mssqlDb.select().from(products)
+                .where(eq(products.serialNumber, values.serialNumber))
+                .orderBy(desc(products.id));
+            return product;
         }
     },
 
@@ -375,13 +394,17 @@ export const dataProvider = {
             const record = await airtableBase(TABLES.WARRANTIES).create(cleaned) as unknown as { id: string, fields: FieldSet };
             return { id: record.id, ...record.fields } as unknown as Warranty;
         } else {
-            await mssqlDb.insert(warranties).values({
+            const values = {
                 ...data,
                 productId: data.productId ? Number(data.productId) : null,
                 startDate: new Date(data.startDate),
                 endDate: new Date(data.endDate)
-            } as NewWarranty);
-            return { success: true };
+            } as NewWarranty;
+            await mssqlDb.insert(warranties).values(values);
+            const [w] = await mssqlDb.select().from(warranties)
+                .where(eq(warranties.productId, Number(values.productId)))
+                .orderBy(desc(warranties.id));
+            return w;
         }
     },
 
