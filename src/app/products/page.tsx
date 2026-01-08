@@ -27,7 +27,7 @@ export default async function ProductsPage({
     const session = await getSession();
     if (!session) redirect("/login");
 
-    const { q = "", status = "all" } = await searchParams;
+    const { q = "", status = "active" } = await searchParams;
     const allProducts = await dataProvider.getAllProducts(q);
 
     const now = new Date();
@@ -75,7 +75,7 @@ export default async function ProductsPage({
         if (status === "all") return true;
         if (status === "active") return p.warrantyStatus === "active";
         if (status === "near_expiry") return p.warrantyStatus === "near_expiry";
-        if (status === "expired") return p.warrantyStatus === "expired";
+        if (status === "expired") return p.warrantyStatus === "expired" || p.warrantyStatus === "none";
         return true;
     });
 
