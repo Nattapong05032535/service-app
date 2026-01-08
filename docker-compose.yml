@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: salesforce_db
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=Password123!
+      - MSSQL_PID=Developer
+    ports:
+      - "1435:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+
+  app:
+    build: .
+    container_name: salesforce_app
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=sqlserver://sa:Password123!@db:1433/salesforce?encrypt=true&trustServerCertificate=true
+    depends_on:
+      - db
+
+volumes:
+  sqlserver_data:
