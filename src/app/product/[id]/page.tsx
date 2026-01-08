@@ -1,46 +1,38 @@
 import { dataProvider } from "@/db/provider";
 import { getSession } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { createWarranty, createService } from "@/app/actions/business";
-import { Package, ShieldCheck, ClipboardList, Hammer, Calendar, ArrowLeft, Clock, Plus, History, MapPin, CheckCircle2, User, Printer } from "lucide-react";
+import { Package, ShieldCheck, ClipboardList, Calendar, ArrowLeft, Clock, History, CheckCircle2, User } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { AddWarrantyDialog } from "@/components/AddWarrantyDialog";
 import { AddServiceDialog } from "@/components/AddServiceDialog";
 import { EditServiceDialog } from "@/components/EditServiceDialog";
 import { PrintWarrantyButton } from "@/components/PrintWarrantyButton";
+import { Product, Company, Warranty, ServiceWithWarranty } from "@/types/database";
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const session = await getSession();
     if (!session) redirect("/login");
 
     const { id: productId } = await params;
-    const product = await dataProvider.getProductById(productId) as any;
+    const product = await dataProvider.getProductById(productId) as Product;
     if (!product) notFound();
 
-    const company = await dataProvider.getCompanyById(product.companyId) as any;
+    const company = await dataProvider.getCompanyById(String(product.companyId)) as Company;
 
-    const productWarranties = await dataProvider.getWarrantiesByProduct(productId) as any[];
+    const productWarranties = await dataProvider.getWarrantiesByProduct(productId) as Warranty[];
 
     // Check for active warranty
     const now = new Date();
-    const oneMonthFromNow = new Date(now);
-    oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
 
-    const activeWarranty: any = productWarranties.find((w: any) => new Date(w.startDate) <= now && new Date(w.endDate) >= now);
-    const upcomingWarranty: any = !activeWarranty ? productWarranties.find((w: any) => new Date(w.startDate) > now) : null;
-    const expiredWarranty: any = !activeWarranty && !upcomingWarranty ? productWarranties[0] : null;
+    const activeWarranty = productWarranties.find((w) => new Date(w.startDate) <= now && new Date(w.endDate) >= now);
 
-    const isExpiringSoon = activeWarranty && new Date(activeWarranty.endDate) < oneMonthFromNow;
-
-    const productServicesRaw = await dataProvider.getServicesByProduct(productId) as any[];
-    // Normalize data structure for UI and sort by date descending
+    const productServicesRaw = await dataProvider.getServicesByProduct(productId);
+    // Normalize data structure for UI and sort by date ascending
     const productServices = productServicesRaw
-        .map((item: any) => ({
-            service: item.service || item,
+        .map((item: ServiceWithWarranty) => ({
+            service: item.service,
             warranty: item.warranty || {}
         }))
         .sort((a, b) => new Date(a.service.entryTime).getTime() - new Date(b.service.entryTime).getTime());
@@ -109,12 +101,11 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50">
-                                        {[...productWarranties].sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime()).map((w: any) => {
+                                        {[...productWarranties].sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime()).map((w) => {
                                             const wStart = new Date(w.startDate);
                                             const wEnd = new Date(w.endDate);
                                             const isActive = wStart <= now && wEnd >= now;
                                             const isExpired = wEnd < now;
-                                            const isUpcoming = wStart > now;
 
                                             return (
                                                 <tr key={w.id} className={cn(
@@ -168,7 +159,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                         </div>
                         ประวัติการซ่อมและบริการ
                     </h2>
-                    {activeWarranty && <AddServiceDialog warrantyId={activeWarranty.id} />}
+                    {activeWarranty && <AddServiceDialog warrantyId={String(activeWarranty.id)} />}
                 </div>
 
                 <div className="space-y-4">
@@ -178,7 +169,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                             <p className="text-muted-foreground font-medium">ไม่พบประวัติการรับบริการ</p>
                         </div>
                     ) : (
-                        productServices.map(({ service, warranty }: any) => {
+                        productServices.map(({ service, warranty }) => {
                             const isFuture = new Date(service.entryTime) > now && service.status !== "เสร็จสิ้น";
                             const isCompleted = service.status === "เสร็จสิ้น";
 
@@ -186,7 +177,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                                 <EditServiceDialog
                                     key={service.id}
                                     service={service}
-                                    warrantyId={warranty.id}
+                                    warrantyId={String(warranty.id)}
                                     trigger={
                                         <Card className={cn(
                                             "overflow-hidden border-slate-100 hover:shadow-md transition-all cursor-pointer hover:border-primary/30",
