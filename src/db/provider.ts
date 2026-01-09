@@ -183,53 +183,94 @@ export const dataProvider = {
         }
     },
 
-    async getAllProducts(query?: string): Promise<ProductWithLatestWarranty[]> {
-        if (isAirtable) {
-            let filter = '';
-            if (query) {
-                filter = `OR(SEARCH('${query.toLowerCase()}', LOWER({name})), SEARCH('${query.toLowerCase()}', LOWER({serialNumber})))`;
-            }
-            const productRecords = await airtableBase(TABLES.PRODUCTS).select({
-                filterByFormula: filter
-            }).all();
-            
-            const companyRecords = await airtableBase(TABLES.COMPANIES).select().all();
-            const warrantyRecords = await airtableBase(TABLES.WARRANTIES).select().all();
+    async getAllProducts(options: { 
+        query?: string, 
+        status?: string, 
+        page?: number, 
+        pageSize?: number 
+    } = {}): Promise<{ data: ProductWithLatestWarranty[], totalCount: number }> {
+        const { query, status, page = 1, pageSize = 50 } = options;
 
-            return productRecords.map(r => {
+        if (isAirtable) {
+            const filterParts = [];
+            
+            // 1. Search Filter
+            if (query) {
+                filterParts.push(`OR(SEARCH('${query.toLowerCase()}', LOWER({name})), SEARCH('${query.toLowerCase()}', LOWER({serialNumber})))`);
+            }
+            
+            // 2. Status Filter (Using the new Airtable fields)
+            if (status && status !== 'all') {
+                if (status === 'active') {
+                    filterParts.push(`{warrantyStatus} = '✅ Active'`);
+                } else if (status === 'near_expiry') {
+                    filterParts.push(`{isNearExpiry} = 1`);
+                } else if (status === 'expired') {
+                    filterParts.push(`OR({warrantyStatus} = '❌ Expired', {warrantyStatus} = '⚠️ No Warranty')`);
+                }
+            }
+            
+            const filterFormula = filterParts.length > 1 ? `AND(${filterParts.join(',')})` : filterParts[0] || '';
+            
+            // 3. Counting (Airtable bit: fetching just IDs to count is faster, but still multiple requests)
+            // To be fast, we'll fetch only what we need for the current page.
+            // Note: Airtable SDK doesn't support offset easily, we'll fetch up to (page * pageSize)
+            // and slice the last pageSize. For 6,000 records, this is acceptable compared to fetching ALL data.
+            const maxRecords = page * pageSize;
+            
+            const records = await airtableBase(TABLES.PRODUCTS).select({
+                filterByFormula: filterFormula,
+                maxRecords: maxRecords,
+                sort: [{ field: 'latestWarrantyEndDate', direction: 'asc' }] // Sort by expiry
+            }).all();
+
+            // We also need a total count for pagination UI. 
+            // Fetching ALL just to count is slow. Let's do a separate small request for total count logic if needed,
+            // or just return 0 if we don't want to block.
+            // Alternative: Fetch all IDs only (fields: [])
+            const allIds = await airtableBase(TABLES.PRODUCTS).select({
+                filterByFormula: filterFormula,
+                fields: []
+            }).all();
+            const totalCount = allIds.length;
+
+            const pageData = records.slice((page - 1) * pageSize, page * pageSize);
+            
+            // 4. Fetch only relevant companies to avoid loading thousands of companies
+            const relevantCompanyIds = [...new Set(pageData.map(r => {
+                const f = r.fields;
+                return Array.isArray(f.companyId) ? f.companyId[0] : (f.companyId as string);
+            }).filter(Boolean))];
+
+            let companyRecords: readonly { id: string; fields: FieldSet }[] = [];
+            if (relevantCompanyIds.length > 0) {
+                const companyFilter = `OR(${relevantCompanyIds.map(id => `RECORD_ID()='${id}'`).join(',')})`;
+                companyRecords = await airtableBase(TABLES.COMPANIES).select({
+                    filterByFormula: companyFilter
+                }).all();
+            }
+
+            const data = pageData.map(r => {
+
                 const fields = r.fields as FieldSet;
                 const companyId = Array.isArray(fields.companyId) ? fields.companyId[0] : (fields.companyId as string);
                 const company = companyRecords.find(c => c.id === companyId);
-                const productWarranties = warrantyRecords
-                    .map(w => {
-                        const wFields = w.fields as FieldSet;
-                        return {
-                            id: w.id,
-                            ...wFields,
-                            productId: Array.isArray(wFields.productId) ? wFields.productId[0] : (wFields.productId as string)
-                        };
-                    })
-                    .filter(w => w.productId === r.id);
                 
-                const latestWarranty = productWarranties.sort((a, b) => {
-                    const dateA = new Date((a as { endDate?: string }).endDate || 0).getTime();
-                    const dateB = new Date((b as { endDate?: string }).endDate || 0).getTime();
-                    return dateB - dateA;
-                })[0];
-
+                // Map the pre-calculated Airtable fields back to our UI structure
                 return {
                     ...fields,
                     id: r.id,
                     companyId,
                     companyName: company ? (company.fields as FieldSet).name as string : 'Unknown',
-                    latestWarranty: latestWarranty ? {
-                        ...latestWarranty,
-                        startDate: new Date((latestWarranty as { startDate?: string }).startDate || 0),
-                        endDate: new Date((latestWarranty as { endDate?: string }).endDate || 0)
+                    latestWarranty: fields.latestWarrantyEndDate ? {
+                        endDate: new Date(fields.latestWarrantyEndDate as string)
                     } : null
                 } as unknown as ProductWithLatestWarranty;
             });
+
+            return { data, totalCount };
         } else {
+            // MSSQL implementation (kept simple for now, but should also be paginated if needed)
             const productsWithCompany = await mssqlDb.select({
                 product: products,
                 company: companies
@@ -242,20 +283,23 @@ export const dataProvider = {
             ) : undefined);
             
             const productIds = productsWithCompany.map(p => p.product.id);
-            if (productIds.length === 0) return [];
+            if (productIds.length === 0) return { data: [], totalCount: 0 };
             
             const allWarranties = await mssqlDb.select().from(warranties).where(inArray(warranties.productId, productIds));
             
-            return productsWithCompany.map(p => {
+            const data = productsWithCompany.map(p => {
                 const productWarranties = allWarranties.filter(w => w.productId === p.product.id);
                 const latestWarranty = productWarranties.sort((a, b) => b.endDate.getTime() - a.endDate.getTime())[0];
                 return {
                     ...p.product,
                     companyName: p.company.name,
                     latestWarranty
-                };
+                } as ProductWithLatestWarranty;
             });
+            
+            return { data, totalCount: data.length };
         }
+
     },
 
     // === WARRANTIES ===
