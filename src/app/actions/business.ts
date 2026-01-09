@@ -4,6 +4,7 @@ import { dataProvider } from "@/db/provider";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
+import { Company, Product } from "@/types/database";
 
 export async function createOrUpdateCompany(formData: FormData): Promise<void> {
     const session = await getSession();
@@ -175,7 +176,18 @@ export async function updateServiceAction(formData: FormData): Promise<void> {
     }
 }
 
-export async function importDataAction(rows: any[]) {
+export interface ImportRow {
+    "ชื่อลูกค้า"?: string;
+    "สินค้า"?: string;
+    "เลขที่ซีเรียลสินค้า"?: string | number;
+    "ผู้ติดต่อ"?: string;
+    "วันที่ซื้อ"?: string | number | Date;
+    "วันที่สิ้นสุดการรับประกัน"?: string | number | Date;
+    "สถานะ PM"?: string;
+    "สถานะการรับประกัน"?: string;
+}
+
+export async function importDataAction(rows: ImportRow[]) {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
 
@@ -220,14 +232,14 @@ export async function importDataAction(rows: any[]) {
 
     for (const row of rows) {
         try {
-            const companyName = row["ชื่อลูกค้า"] || "-";
-            const productName = row["สินค้า"] || "-";
+            const companyName = (row["ชื่อลูกค้า"] as string) || "-";
+            const productName = (row["สินค้า"] as string) || "-";
             const serialNumber = String(row["เลขที่ซีเรียลสินค้า"] || "-");
-            const contactPerson = row["ผู้ติดต่อ"] || "-";
+            const contactPerson = (row["ผู้ติดต่อ"] as string) || "-";
             const purchaseDate = parseThaiDate(row["วันที่ซื้อ"]);
             const warrantyEndDate = parseThaiDate(row["วันที่สิ้นสุดการรับประกัน"]);
-            const pmStatus = row["สถานะ PM"];
-            const warrantyStatus = row["สถานะการรับประกัน"];
+            const pmStatus = row["สถานะ PM"] as string;
+            const warrantyStatus = row["สถานะการรับประกัน"] as string;
 
             // 1. Find or Create Company
             let company = await dataProvider.findCompanyByName(companyName);
@@ -236,7 +248,12 @@ export async function importDataAction(rows: any[]) {
                     name: companyName,
                     createdBy: session.id
                 });
-                company = newCompany as any;
+                company = newCompany as Company;
+            }
+
+            if (!company) {
+                console.error("Failed to find or create company:", companyName);
+                continue;
             }
 
             // 2. Create Product (Always create duplicate as requested)
@@ -248,7 +265,11 @@ export async function importDataAction(rows: any[]) {
                 purchaseDate: purchaseDate ? purchaseDate.toISOString() : null,
                 branch: "-"
             });
-            const productId = (product as any).id;
+            if (!product) {
+                console.error("Failed to create product:", productName);
+                continue;
+            }
+            const productId = (product as Product).id;
 
             // 3. Create Warranty if End Date exists
             if (warrantyEndDate && warrantyStatus) {

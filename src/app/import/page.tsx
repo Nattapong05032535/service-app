@@ -12,12 +12,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { importDataAction } from "@/app/actions/business";
+import { importDataAction, ImportRow } from "@/app/actions/business";
 
 export default function ImportPage() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [result, setResult] = useState<{ success: boolean; count: number } | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [progress, setProgress] = useState({ current: 0, total: 0 });
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -26,6 +27,7 @@ export default function ImportPage() {
         setIsProcessing(true);
         setError(null);
         setResult(null);
+        setProgress({ current: 0, total: 0 });
 
         try {
             const reader = new FileReader();
@@ -39,14 +41,29 @@ export default function ImportPage() {
 
                     if (data.length === 0) {
                         setError("ไม่พบข้อมูลในไฟล์");
-                        setIsProcessing(true);
+                        setIsProcessing(false);
                         return;
                     }
                     
+                    setProgress({ current: 0, total: data.length });
+
                     // Sanitize data to plain objects to avoid Next.js Server Action serialization errors
-                    const plainData = JSON.parse(JSON.stringify(data));
-                    const res = await importDataAction(plainData);
-                    setResult(res);
+                    const plainData = JSON.parse(JSON.stringify(data)) as ImportRow[];
+                    
+                    // Process in chunks of 50 rows to avoid 1MB limit
+                    const chunkSize = 50;
+                    let totalImported = 0;
+
+                    for (let i = 0; i < plainData.length; i += chunkSize) {
+                        const chunk = plainData.slice(i, i + chunkSize);
+                        const res = await importDataAction(chunk);
+                        if (res.success) {
+                            totalImported += res.count;
+                            setProgress(prev => ({ ...prev, current: Math.min(i + chunkSize, plainData.length) }));
+                        }
+                    }
+
+                    setResult({ success: true, count: totalImported });
                 } catch (err) {
                     console.error(err);
                     setError("เกิดข้อผิดพลาดในการประมวลผลไฟล์");
@@ -93,7 +110,9 @@ export default function ImportPage() {
                                     {isProcessing ? (
                                         <>
                                             <Loader2 className="w-4 h-4 animate-spin" />
-                                            กำลังประมวลผล...
+                                            {progress.total > 0 
+                                                ? `กำลังนำเข้า ${progress.current} จาก ${progress.total}...` 
+                                                : "กำลังประมวลผล..."}
                                         </>
                                     ) : (
                                         <>
