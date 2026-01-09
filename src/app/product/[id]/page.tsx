@@ -121,8 +121,8 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                                                             {w.type}
                                                         </div>
                                                     </td>
-                                                    <td className="px-6 py-4 text-slate-600">{wStart.toLocaleDateString('th-TH')}</td>
-                                                    <td className="px-6 py-4 text-slate-600">{wEnd.toLocaleDateString('th-TH')}</td>
+                                                    <td className="px-6 py-4 text-slate-600">{wStart.toLocaleDateString('en-GB')}</td>
+                                                    <td className="px-6 py-4 text-slate-600">{wEnd.toLocaleDateString('en-GB')}</td>
                                                     <td className="px-6 py-4 text-center">
                                                         <span className={cn(
                                                             "px-2 py-1 rounded-full text-[10px] font-bold uppercase",
