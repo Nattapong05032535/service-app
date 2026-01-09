@@ -96,7 +96,7 @@ export default async function ProductsPage({
                 <Card className="p-4 shadow-sm">
                     <div className="flex flex-col lg:flex-row gap-4">
                         <form action="/products" method="GET" className="flex-1 flex gap-2">
-                            <div className="relative flex-1 max-w-[200px]">
+                            <div className="relative flex-1 max-w-[500px]">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                                 <Input
                                     name="q"
