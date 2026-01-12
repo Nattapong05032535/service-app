@@ -22,13 +22,24 @@ import { ProductWithLatestWarranty } from "@/types/database";
 export default async function ProductsPage({ 
     searchParams 
 }: { 
-    searchParams: Promise<{ q?: string, status?: string }> 
+    searchParams: Promise<{ q?: string, status?: string, page?: string }> 
 }) {
     const session = await getSession();
     if (!session) redirect("/login");
 
-    const { q = "", status = "active" } = await searchParams;
-    const allProducts = await dataProvider.getAllProducts(q);
+    const { q = "", status = "all", page = "1" } = await searchParams;
+    const pageSize = 10;
+    const currentPage = parseInt(page);
+    
+    const { data: allProducts, totalCount } = await dataProvider.getAllProducts({
+        query: q,
+        status: status,
+        page: currentPage,
+        pageSize: pageSize
+    });
+
+    const totalPages = Math.ceil(totalCount / pageSize);
+
 
     const now = new Date();
     const nextMonth = new Date();
@@ -70,29 +81,7 @@ export default async function ProductsPage({
         };
     });
 
-    // Filtering
-    const filteredProducts = processedProducts.filter((p) => {
-        if (status === "all") return true;
-        if (status === "active") return p.warrantyStatus === "active";
-        if (status === "near_expiry") return p.warrantyStatus === "near_expiry";
-        if (status === "expired") return p.warrantyStatus === "expired" || p.warrantyStatus === "none";
-        return true;
-    });
-
-    // Sorting: Near Expiry (1) -> Active (2) -> Expired (3) -> None (4)
-    // Within groups: Closest endDate first
-    const sortedProducts = [...filteredProducts].sort((a, b) => {
-        const rank = { "near_expiry": 1, "active": 2, "expired": 3, "none": 4 };
-        const rankA = rank[a.warrantyStatus as keyof typeof rank];
-        const rankB = rank[b.warrantyStatus as keyof typeof rank];
-
-        if (rankA !== rankB) return rankA - rankB;
-
-        if (a.latestWarranty && b.latestWarranty) {
-            return new Date(a.latestWarranty.endDate).getTime() - new Date(b.latestWarranty.endDate).getTime();
-        }
-        return 0;
-    });
+    const sortedProducts = processedProducts; // Already sorted by expiry date from server
 
     return (
         <div className="container mx-auto py-10 px-4">
@@ -106,15 +95,20 @@ export default async function ProductsPage({
             <div className="grid gap-6">
                 <Card className="p-4 shadow-sm">
                     <div className="flex flex-col lg:flex-row gap-4">
-                        <form action="/products" method="GET" className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                            <Input
-                                name="q"
-                                defaultValue={q}
-                                placeholder="ค้นหาชื่อสินค้า หรือ Serial No..."
-                                className="pl-10"
-                            />
-                            {status !== "all" && <input type="hidden" name="status" value={status} />}
+                        <form action="/products" method="GET" className="flex-1 flex gap-2">
+                            <div className="relative flex-1 max-w-[200px]">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                                <Input
+                                    name="q"
+                                    defaultValue={q}
+                                    placeholder="ค้นหาชื่อสินค้า หรือ Serial No..."
+                                    className="pl-10"
+                                />
+                            </div>
+                            <Button type="submit" size="sm" className="rounded-full h-full">
+                                <Search className="w-4 h-4" />
+                            </Button>
+                            <input type="hidden" name="status" value="all" />
                         </form>
                         <div className="flex flex-wrap items-center gap-2">
                             <Link href="/products?status=all&q=">
@@ -206,7 +200,55 @@ export default async function ProductsPage({
                         ))}
                     </div>
                 )}
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-8 pt-6 border-t font-medium">
+                        <div className="text-sm text-muted-foreground">
+                            แสดง {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, totalCount)} จากทั้งหมด {totalCount} รายการ
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <Link href={`/products?status=${status}&q=${q}&page=${Math.max(1, currentPage - 1)}`}>
+                                <Button variant="outline" size="sm" disabled={currentPage <= 1}>
+                                    ก่อนหน้า
+                                </Button>
+                            </Link>
+                            
+                            {/* Page Numbers */}
+                            <div className="flex items-center gap-1 mx-2">
+                                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                    // Logic to show pages around current page
+                                    let pageNum = currentPage;
+                                    if (currentPage <= 3) pageNum = i + 1;
+                                    else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+                                    else pageNum = currentPage - 2 + i;
+                                    
+                                    if (pageNum <= 0 || pageNum > totalPages) return null;
+
+                                    return (
+                                        <Link key={pageNum} href={`/products?status=${status}&q=${q}&page=${pageNum}`}>
+                                            <Button 
+                                                variant={currentPage === pageNum ? "primary" : "ghost"} 
+                                                size="sm" 
+                                                className="w-9 h-9 p-0"
+                                            >
+                                                {pageNum}
+                                            </Button>
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+
+                            <Link href={`/products?status=${status}&q=${q}&page=${Math.min(totalPages, currentPage + 1)}`}>
+                                <Button variant="outline" size="sm" disabled={currentPage >= totalPages}>
+                                    ถัดไป
+                                </Button>
+                            </Link>
+                        </div>
+                    </div>
+                )}
             </div>
+
         </div>
     );
 }

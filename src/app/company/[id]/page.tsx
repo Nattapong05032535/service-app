@@ -35,7 +35,8 @@ export default async function CompanyDetailPage(props: Props) {
     const companyProducts = await dataProvider.getProductsByCompany(companyId);
 
     // Apply filtering
-    const filteredProducts = query
+    // Apply filtering
+    let filteredProducts = query
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ? companyProducts.filter((p: any) =>
             p.name?.toLowerCase().includes(query.toLowerCase()) ||
@@ -43,6 +44,11 @@ export default async function CompanyDetailPage(props: Props) {
             (p.branch && p.branch.toLowerCase().includes(query.toLowerCase()))
         )
         : companyProducts;
+
+    // Limit to 10 items if no search query
+    if (!query && filteredProducts.length > 10) {
+        filteredProducts = filteredProducts.slice(0, 10);
+    }
 
     // Fetch all warranties for these products in one go (using filtered ones for display, but maybe all for logic)
     // Actually using filteredProducts is enough for display

@@ -12,7 +12,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     if (!session) redirect("/login");
 
     const { q = "" } = await searchParams;
-    const allCompanies = await dataProvider.getCompanies(q);
+    let allCompanies = await dataProvider.getCompanies(q);
+
+    // Limit to 10 items if no search query
+    if (!q && allCompanies.length > 10) {
+        allCompanies = allCompanies.slice(0, 10);
+    }
 
     return (
         <div className="container mx-auto py-10 px-4">
