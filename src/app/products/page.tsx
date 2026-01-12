@@ -28,7 +28,7 @@ export default async function ProductsPage({
     if (!session) redirect("/login");
 
     const { q = "", status = "all", page = "1" } = await searchParams;
-    const pageSize = 50;
+    const pageSize = 10;
     const currentPage = parseInt(page);
     
     const { data: allProducts, totalCount } = await dataProvider.getAllProducts({

@@ -4,8 +4,11 @@ import { Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface PrintWarrantyButtonProps {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     warranty: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     product: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     company: any;
 }
 
