@@ -32,6 +32,23 @@
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
+
+  --animate-progress-interstitial: progress-interstitial 1.5s ease-in-out infinite;
+
+  @keyframes progress-interstitial {
+    0% {
+      transform: translateX(-100%);
+      width: 0%;
+    }
+    50% {
+      transform: translateX(0%);
+      width: 50%;
+    }
+    100% {
+      transform: translateX(100%);
+      width: 0%;
+    }
+  }
 }
 
 @layer base {
@@ -94,7 +111,7 @@
   .container {
     margin-inline: auto;
     padding-inline: 1.5rem;
-    max-width: 1400px;
+    max-width: 1600px;
   }
 }
 

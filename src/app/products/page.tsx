@@ -2,12 +2,10 @@ import { dataProvider } from "@/db/provider";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/Badge";
 import Link from "next/link";
+import { ProductFilters } from "./components/ProductFilters";
 import {
-  Search,
   Package,
   ChevronRight,
   Calendar,
@@ -94,64 +92,7 @@ export default async function ProductsPage({
 
       <div className="grid gap-6">
         <Card className="p-4 shadow-sm">
-          <div className="flex flex-col lg:flex-row gap-4">
-            <form action="/products" method="GET" className="flex-1 flex gap-2">
-              <div className="relative flex-1 max-w-[500px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                <Input
-                  name="q"
-                  defaultValue={q}
-                  placeholder="ค้นหาชื่อสินค้า หรือ Serial No..."
-                  className="pl-10"
-                />
-              </div>
-              <Button type="submit" size="sm" className="rounded-full h-full">
-                <Search className="w-4 h-4" />
-              </Button>
-              <input type="hidden" name="status" value="all" />
-            </form>
-            <div className="flex flex-wrap items-center gap-2">
-              <Link href="/products?status=all&q=">
-                <Button
-                  variant={status === "all" ? "primary" : "outline"}
-                  size="sm"
-                  className="gap-2"
-                >
-                  ทั้งหมด
-                </Button>
-              </Link>
-              <Link href={`/products?status=active&q=${q}`}>
-                <Button
-                  variant={status === "active" ? "primary" : "outline"}
-                  size="sm"
-                  className="gap-2"
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                  อยู่ในประกัน
-                </Button>
-              </Link>
-              <Link href={`/products?status=near_expiry&q=${q}`}>
-                <Button
-                  variant={status === "near_expiry" ? "primary" : "outline"}
-                  size="sm"
-                  className="gap-2"
-                >
-                  <ShieldAlert className="w-4 h-4" />
-                  ใกล้หมดประกัน
-                </Button>
-              </Link>
-              <Link href={`/products?status=expired&q=${q}`}>
-                <Button
-                  variant={status === "expired" ? "primary" : "outline"}
-                  size="sm"
-                  className="gap-2"
-                >
-                  <ShieldX className="w-4 h-4" />
-                  หมดประกัน
-                </Button>
-              </Link>
-            </div>
-          </div>
+          <ProductFilters initialQ={q} initialStatus={status} />
         </Card>
 
         {sortedProducts.length === 0 ? (
