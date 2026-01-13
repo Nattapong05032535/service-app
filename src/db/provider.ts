@@ -218,20 +218,30 @@ export const dataProvider = {
             // and slice the last pageSize. For 6,000 records, this is acceptable compared to fetching ALL data.
             const maxRecords = page * pageSize;
             
-            const records = await airtableBase(TABLES.PRODUCTS).select({
-                filterByFormula: filterFormula,
+            // Build select options, only include filterByFormula if it's not empty
+            const selectOptions: {
+                filterByFormula?: string;
+                maxRecords: number;
+                sort: { field: string; direction: 'asc' | 'desc' }[];
+            } = {
                 maxRecords: maxRecords,
                 sort: [{ field: 'latestWarrantyEndDate', direction: 'asc' }] // Sort by expiry
-            }).all();
+            };
+            if (filterFormula) {
+                selectOptions.filterByFormula = filterFormula;
+            }
+
+            const records = await airtableBase(TABLES.PRODUCTS).select(selectOptions).all();
 
             // We also need a total count for pagination UI. 
             // Fetching ALL just to count is slow. Let's do a separate small request for total count logic if needed,
             // or just return 0 if we don't want to block.
             // Alternative: Fetch all IDs only (fields: [])
-            const allIds = await airtableBase(TABLES.PRODUCTS).select({
-                filterByFormula: filterFormula,
-                fields: []
-            }).all();
+            const countOptions: { filterByFormula?: string; fields: string[] } = { fields: [] };
+            if (filterFormula) {
+                countOptions.filterByFormula = filterFormula;
+            }
+            const allIds = await airtableBase(TABLES.PRODUCTS).select(countOptions).all();
             const totalCount = allIds.length;
 
             const pageData = records.slice((page - 1) * pageSize, page * pageSize);
