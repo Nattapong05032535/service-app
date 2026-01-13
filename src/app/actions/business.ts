@@ -93,6 +93,7 @@ export async function createWarranty(formData: FormData): Promise<void> {
 
         // Auto-generate PM schedules
         if (pmCount > 0 && pmInterval > 0) {
+            const pmOrderCase = await dataProvider.getNextOrderNumber('PM');
             const startDate = new Date(startDateStr);
             for (let i = 1; i <= pmCount; i++) {
                 const pmDate = new Date(startDate);
@@ -112,6 +113,7 @@ export async function createWarranty(formData: FormData): Promise<void> {
                     entryTime,
                     exitTime,
                     description: `แผนงานบำรุงรักษาเชิงป้องกัน (PM) ครั้งที่ ${i}`,
+                    orderCase: pmOrderCase,
                 });
             }
         }
@@ -154,16 +156,21 @@ export async function updateServiceAction(formData: FormData): Promise<void> {
     const description = formData.get("description") as string;
     const technician = formData.get("technician") as string;
     const notes = formData.get("notes") as string;
+    const techService = formData.get("techService") as string;
+    const partsjson = formData.get("partsjson") as string;
     const status = formData.get("status") as string;
     const warrantyId = formData.get("warrantyId") as string;
 
     try {
+        const parts = partsjson ? JSON.parse(partsjson) : undefined;
         await dataProvider.updateService(id, {
             entryTime,
             exitTime,
             description,
             technician,
             notes,
+            techService,
+            parts,
             status,
         });
     } catch (e: unknown) {
@@ -174,6 +181,10 @@ export async function updateServiceAction(formData: FormData): Promise<void> {
     if (w) {
         revalidatePath(`/product/${(w as { productId: string | number }).productId}`);
     }
+}
+
+export async function getServicePartsAction(orderCase: string) {
+    return await dataProvider.getServiceParts(orderCase);
 }
 
 export interface ImportRow {

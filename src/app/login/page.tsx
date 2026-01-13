@@ -1,7 +1,5 @@
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { loginAction } from "@/app/actions/auth";
+import { LoginForm } from "@/components/LoginForm";
 import Link from "next/link";
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
@@ -20,17 +18,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
                             {error}
                         </div>
                     )}
-                    <form action={loginAction} className="space-y-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Username</label>
-                            <Input name="username" placeholder="johndoe" required />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Password</label>
-                            <Input name="password" type="password" placeholder="••••••••" required />
-                        </div>
-                        <Button className="w-full mt-4" type="submit">Sign In</Button>
-                    </form>
+                    <LoginForm />
                     <div className="mt-6 text-center text-sm">
                         Don&apos;t have an account?{" "}
                         <Link href="/register" className="text-primary hover:underline">

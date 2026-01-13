@@ -1,12 +1,10 @@
 import { dataProvider } from "@/db/provider";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { createOrUpdateCompany } from "@/app/actions/business";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Save, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { CompanyForm } from "@/components/CompanyForm";
 
 export default async function CompanyFormPage({ params }: { params: Promise<{ id?: string }> }) {
     const session = await getSession();
@@ -37,42 +35,7 @@ export default async function CompanyFormPage({ params }: { params: Promise<{ id
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <form action={createOrUpdateCompany} className="space-y-6">
-                        {id && <input type="hidden" name="id" value={id} />}
-
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold">ชื่อบริษัท (ภาษาอังกฤษ/หลัก)</label>
-                            <Input name="name" defaultValue={companyData?.name || ""} placeholder="Ex. Acme Corp" required />
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold">ชื่อบริษัท (ภาษาไทย/รอง)</label>
-                            <Input name="nameSecondary" defaultValue={companyData?.nameSecondary || ""} placeholder="ตัวอย่าง: บริษัท แอคเม่ จำกัด" />
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold">เลขประจำตัวผู้เสียภาษี</label>
-                            <Input name="taxId" defaultValue={companyData?.taxId || ""} placeholder="0123456789012" />
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold">ข้อมูลการติดต่อ (ที่อยู่/เบอร์โทร)</label>
-                            <textarea
-                                name="contactInfo"
-                                defaultValue={companyData?.contactInfo || ""}
-                                rows={4}
-                                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all"
-                                placeholder="ที่อยู่, เบอร์โทร, อีเมล..."
-                            />
-                        </div>
-
-                        <div className="flex justify-end pt-4">
-                            <Button type="submit" className="gap-2">
-                                <Save className="w-4 h-4" />
-                                {id ? "อัปเดตข้อมูล" : "บันทึกข้อมูล"}
-                            </Button>
-                        </div>
-                    </form>
+                    <CompanyForm id={id} companyData={companyData} />
                 </CardContent>
             </Card>
         </div>

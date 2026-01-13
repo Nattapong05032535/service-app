@@ -5,21 +5,21 @@ import { Plus, X, Package, Hash, Calendar, User, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createProduct } from "@/app/actions/business";
+import { useLoading } from "@/context/LoadingContext";
 
 export function AddProductDialog({ companyId }: { companyId: string }) {
     const [isOpen, setIsOpen] = useState(false);
-    const [isPending, setIsPending] = useState(false);
+    const { withLoading } = useLoading();
 
     async function handleSubmit(formData: FormData) {
-        setIsPending(true);
-        try {
-            await createProduct(formData);
-            setIsOpen(false);
-        } catch (error) {
-            console.error("Failed to create product:", error);
-        } finally {
-            setIsPending(false);
-        }
+        await withLoading(async () => {
+            try {
+                await createProduct(formData);
+                setIsOpen(false);
+            } catch (error) {
+                console.error("Failed to create product:", error);
+            }
+        });
     }
 
     return (
@@ -37,7 +37,7 @@ export function AddProductDialog({ companyId }: { companyId: string }) {
                     {/* Backdrop */}
                     <div
                         className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
-                        onClick={() => !isPending && setIsOpen(false)}
+                        onClick={() => setIsOpen(false)}
                     />
 
                     {/* Dialog Content */}
@@ -55,7 +55,6 @@ export function AddProductDialog({ companyId }: { companyId: string }) {
                             <button
                                 onClick={() => setIsOpen(false)}
                                 className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                                disabled={isPending}
                             >
                                 <X className="w-5 h-5" />
                             </button>
@@ -131,20 +130,14 @@ export function AddProductDialog({ companyId }: { companyId: string }) {
                                     variant="outline"
                                     className="flex-1 h-12 rounded-xl"
                                     onClick={() => setIsOpen(false)}
-                                    disabled={isPending}
                                 >
                                     ยกเลิก
                                 </Button>
                                 <Button
                                     type="submit"
                                     className="flex-2 h-12 rounded-xl gap-2 font-bold px-8 shadow-lg shadow-primary/25"
-                                    disabled={isPending}
                                 >
-                                    {isPending ? (
-                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                    ) : (
-                                        <Plus className="w-5 h-5" />
-                                    )}
+                                    <Plus className="w-5 h-5" />
                                     บันทึกสินค้า
                                 </Button>
                             </div>

@@ -1,7 +1,7 @@
-import { users, companies, products, warranties, services } from "@/db/schema";
+import { users, companies, products, warranties, services, serviceParts } from "@/db/schema";
 
 export type User = typeof users.$inferSelect;
-export type NewUser = typeof users.$inferInsert;
+export type UserInsert = typeof users.$inferInsert;
 
 export type Company = typeof companies.$inferSelect;
 export type NewCompany = typeof companies.$inferInsert;
@@ -15,6 +15,9 @@ export type NewWarranty = typeof warranties.$inferInsert;
 export type Service = typeof services.$inferSelect;
 export type NewService = typeof services.$inferInsert;
 
+export type ServicePart = typeof serviceParts.$inferSelect;
+export type NewServicePart = typeof serviceParts.$inferInsert;
+
 export interface ProductWithLatestWarranty extends Product {
     companyName: string;
     latestWarranty: Warranty | null;
@@ -23,6 +26,13 @@ export interface ProductWithLatestWarranty extends Product {
 export interface ServiceWithWarranty {
     service: Service;
     warranty: Warranty;
+}
+
+export interface ServiceDetail {
+    service: Service;
+    warranty: Warranty;
+    product: Product;
+    company: Company;
 }
 
 // Input types that allow strings for dates and numbers/strings for IDs

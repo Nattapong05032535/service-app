@@ -7,76 +7,72 @@ import {
     FileText, 
     CheckCircle2, 
     AlertCircle, 
-    Loader2,
     Table as TableIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { importDataAction, ImportRow } from "@/app/actions/business";
+import { useLoading } from "@/context/LoadingContext";
 
 export default function ImportPage() {
-    const [isProcessing, setIsProcessing] = useState(false);
+    const { withLoading } = useLoading();
     const [result, setResult] = useState<{ success: boolean; count: number } | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [progress, setProgress] = useState({ current: 0, total: 0 });
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        setIsProcessing(true);
-        setError(null);
-        setResult(null);
-        setProgress({ current: 0, total: 0 });
+        await withLoading(async () => {
+            setError(null);
+            setResult(null);
 
-        try {
-            const reader = new FileReader();
-            reader.onload = async (evt) => {
-                try {
-                    const bstr = evt.target?.result;
-                    const wb = XLSX.read(bstr, { type: "binary" });
-                    const wsname = wb.SheetNames[0];
-                    const ws = wb.Sheets[wsname];
-                    const data = XLSX.utils.sheet_to_json(ws);
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = async (evt) => {
+                    try {
+                        const bstr = evt.target?.result;
+                        const wb = XLSX.read(bstr, { type: "binary" });
+                        const wsname = wb.SheetNames[0];
+                        const ws = wb.Sheets[wsname];
+                        const data = XLSX.utils.sheet_to_json(ws);
 
-                    if (data.length === 0) {
-                        setError("ไม่พบข้อมูลในไฟล์");
-                        setIsProcessing(false);
-                        return;
-                    }
-                    
-                    setProgress({ current: 0, total: data.length });
-
-                    // Sanitize data to plain objects to avoid Next.js Server Action serialization errors
-                    const plainData = JSON.parse(JSON.stringify(data)) as ImportRow[];
-                    
-                    // Process in chunks of 50 rows to avoid 1MB limit
-                    const chunkSize = 50;
-                    let totalImported = 0;
-
-                    for (let i = 0; i < plainData.length; i += chunkSize) {
-                        const chunk = plainData.slice(i, i + chunkSize);
-                        const res = await importDataAction(chunk);
-                        if (res.success) {
-                            totalImported += res.count;
-                            setProgress(prev => ({ ...prev, current: Math.min(i + chunkSize, plainData.length) }));
+                        if (data.length === 0) {
+                            setError("ไม่พบข้อมูลในไฟล์");
+                            resolve(null);
+                            return;
                         }
-                    }
 
-                    setResult({ success: true, count: totalImported });
-                } catch (err) {
-                    console.error(err);
-                    setError("เกิดข้อผิดพลาดในการประมวลผลไฟล์");
-                } finally {
-                    setIsProcessing(false);
-                }
-            };
-            reader.readAsBinaryString(file);
-        } catch (err) {
+                        // Sanitize data to plain objects to avoid Next.js Server Action serialization errors
+                        const plainData = JSON.parse(JSON.stringify(data)) as ImportRow[];
+                        
+                        // Process in chunks of 50 rows to avoid 1MB limit
+                        const chunkSize = 50;
+                        let totalImported = 0;
+
+                        for (let i = 0; i < plainData.length; i += chunkSize) {
+                            const chunk = plainData.slice(i, i + chunkSize);
+                            const res = await importDataAction(chunk);
+                            if (res.success) {
+                                totalImported += res.count;
+                            }
+                        }
+
+                        setResult({ success: true, count: totalImported });
+                        resolve(null);
+                    } catch (err) {
+                        console.error(err);
+                        setError("เกิดข้อผิดพลาดในการประมวลผลไฟล์");
+                        reject(err);
+                    }
+                };
+                reader.onerror = reject;
+                reader.readAsBinaryString(file);
+            });
+        }).catch(err => {
             console.error(err);
             setError("ไม่สามารถอ่านไฟล์ได้");
-            setIsProcessing(false);
-        }
+        });
     };
 
     return (
@@ -104,22 +100,10 @@ export default function ImportPage() {
                                     accept=".xlsx"
                                     onChange={handleFileUpload}
                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                    disabled={isProcessing}
                                 />
-                                <Button className="gap-2 pointer-events-none" disabled={isProcessing}>
-                                    {isProcessing ? (
-                                        <>
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                            {progress.total > 0 
-                                                ? `กำลังนำเข้า ${progress.current} จาก ${progress.total}...` 
-                                                : "กำลังประมวลผล..."}
-                                        </>
-                                    ) : (
-                                        <>
-                                            <FileText className="w-4 h-4" />
-                                            เลือกไฟล์
-                                        </>
-                                    )}
+                                <Button className="gap-2 pointer-events-none">
+                                    <FileText className="w-4 h-4" />
+                                    เลือกไฟล์
                                 </Button>
                             </div>
                         </div>

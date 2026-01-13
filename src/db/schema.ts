@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm";
 // But wait, let me check the drizzle-orm documentation for MS SQL.
 // Actually, it's mssql-core for MS SQL.
 
-import { mssqlTable, bigint, nvarchar, datetime2 } from "drizzle-orm/mssql-core";
+import { mssqlTable, bigint, nvarchar, datetime2, decimal } from "drizzle-orm/mssql-core";
 
 export const users = mssqlTable("users", {
     id: bigint("id", { mode: "number" }).primaryKey().identity(),
@@ -54,5 +54,16 @@ export const services = mssqlTable("services", {
     technician: nvarchar("technician", { length: 255 }),
     status: nvarchar("status", { length: 50 }),
     notes: nvarchar("notes", { length: 1000 }),
+    techService: nvarchar("techservice", { length: 2000 }),
+    orderCase: nvarchar("order_case", { length: 50 }),
+    createdAt: datetime2("created_at").default(sql`GETDATE()`),
+});
+
+export const serviceParts = mssqlTable("service_parts", {
+    id: bigint("id", { mode: "number" }).primaryKey().identity(),
+    orderCase: nvarchar("order_case", { length: 50 }),
+    partNo: nvarchar("part_no", { length: 100 }),
+    details: nvarchar("details", { length: 500 }),
+    qty: decimal("qty", { precision: 10, scale: 2 }),
     createdAt: datetime2("created_at").default(sql`GETDATE()`),
 });

@@ -2,7 +2,7 @@ import { dataProvider } from "@/db/provider";
 import { getSession } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Package, ShieldCheck, ClipboardList, Calendar, ArrowLeft, Clock, History, CheckCircle2, User } from "lucide-react";
+import { Package, ShieldCheck, ClipboardList, Calendar, ArrowLeft, Clock, History, CheckCircle2, User, Printer } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { AddWarrantyDialog } from "@/components/AddWarrantyDialog";
@@ -206,23 +206,32 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                                                             )}>
                                                                 {isCompleted ? <CheckCircle2 className="w-6 h-6" /> : isFuture ? <Calendar className="w-6 h-6" /> : <History className="w-6 h-6" />}
                                                             </div>
-                                                            <div className="space-y-1">
-                                                                <div className="flex items-center gap-2">
+                                                            <div className="space-y-1 min-w-0 flex-1">
+                                                                <div className="flex items-center gap-2 flex-wrap">
                                                                     <span className={cn(
-                                                                        "px-2 py-0.5 rounded text-[10px] font-bold uppercase",
+                                                                        "px-2 py-0.5 rounded text-[10px] font-bold uppercase shrink-0",
                                                                         isCompleted ? "bg-green-100 text-green-700" :
                                                                             isFuture ? "bg-amber-100 text-amber-700" :
                                                                                 service.type === "PM" ? "bg-blue-100 text-blue-700" :
                                                                                     service.type === "CM" ? "bg-red-100 text-red-700" :
                                                                                         "bg-slate-100 text-slate-700"
                                                                     )}>
-                                                                        {service.status || (isFuture ? "Scheduled PM" : service.type)}
+                                                                        {service.status || (isFuture ? `Scheduled ${service.type}` : service.type)}
                                                                     </span>
-                                                                    <p className="font-bold text-lg">
-                                                                        {isFuture ? "แผนการรับบริการ PM" : `บันทึกการรับบริการ (${service.type})`}
+                                                                    <p className="font-bold text-lg flex items-center gap-2 flex-wrap">
+                                                                        {isFuture ? `แผนการรับบริการ ${service.type}` : `บันทึกการรับบริการ (${service.type})`}
+                                                                        {service.orderCase && (
+                                                                            <span className="text-sm font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-500 shrink-0">
+                                                                                #{service.orderCase}
+                                                                            </span>
+                                                                        )}
                                                                     </p>
                                                                 </div>
-                                                                <p className="text-slate-600">{service.description || "ไม่มีรายละเอียดระบุไว้"}</p>
+                                                                <p className="text-slate-600 break-all leading-relaxed">
+                                                                    {(service.description?.length || 0) > 70 
+                                                                        ? `${service.description?.substring(0, 70)}...` 
+                                                                        : (service.description || "ไม่มีรายละเอียดระบุไว้")}
+                                                                </p>
                                                                 {service.technician && (
                                                                     <p className="text-sm font-medium text-slate-700 flex items-center gap-1.5 mt-1">
                                                                         <User className="w-4 h-4 text-primary/60" /> ผู้ดำเนินงาน: {service.technician}
@@ -257,6 +266,13 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                                                                 ) : (
                                                                     <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold uppercase">บันทึกประวัติ</span>
                                                                 )}
+                                                                <Link 
+                                                                    href={`/service/print/${service.id}`} 
+                                                                    target="_blank"
+                                                                    className="flex items-center gap-1.5 px-2 py-0.5 rounded border border-slate-200 text-slate-600 text-[10px] font-bold uppercase hover:bg-slate-50 transition-colors"
+                                                                >
+                                                                    <Printer className="w-3 h-3" /> พิมพ์ใบงาน
+                                                                </Link>
                                                             </div>
                                                         </div>
                                                     </div>

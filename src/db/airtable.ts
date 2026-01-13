@@ -20,4 +20,5 @@ export const TABLES = {
     WARRANTIES: 'Warranties',
     SERVICES: 'Services',
     USERS: 'Users',
+    SERVICE_PARTS: 'ServiceParts',
 };

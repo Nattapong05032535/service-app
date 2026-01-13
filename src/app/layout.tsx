@@ -10,6 +10,8 @@ export const metadata: Metadata = {
   description: "A premium customer data and service management application",
 };
 
+import { LoadingProvider } from "@/context/LoadingContext";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -18,10 +20,12 @@ export default function RootLayout({
   return (
     <html lang="en" className="light">
       <body className={`${inter.className} min-h-screen bg-slate-50/30`}>
-        <Navbar />
-        <main>
-          {children}
-        </main>
+        <LoadingProvider>
+          <Navbar />
+          <main>
+            {children}
+          </main>
+        </LoadingProvider>
       </body>
     </html>
   );
