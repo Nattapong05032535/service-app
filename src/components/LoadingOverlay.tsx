@@ -2,17 +2,18 @@
 
 import { Loader2 } from "lucide-react";
 import { createPortal } from "react-dom";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
+
+const emptySubscribe = () => () => { };
 
 export function LoadingOverlay() {
-    const [mounted, setMounted] = useState(false);
+    const isMounted = useSyncExternalStore(
+        emptySubscribe,
+        () => true,
+        () => false
+    );
 
-    useEffect(() => {
-        setMounted(true);
-        return () => setMounted(false);
-    }, []);
-
-    if (!mounted) return null;
+    if (!isMounted) return null;
 
     return createPortal(
         <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-900/60 backdrop-blur-md transition-all animate-in fade-in duration-300">
