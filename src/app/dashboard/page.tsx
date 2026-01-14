@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Plus, Building2, ChevronRight, Hash, Search } from "lucide-react";
+import { AutoSync } from "@/components/AutoSync";
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
     const session = await getSession();
@@ -21,6 +22,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
     return (
         <div className="container mx-auto py-10 px-4">
+            <AutoSync />
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
                 <div>
                     <h1 className="text-4xl font-extrabold tracking-tight">ภาพรวมระบบ</h1>

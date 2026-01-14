@@ -11,6 +11,7 @@ export const metadata: Metadata = {
 };
 
 import { LoadingProvider } from "@/context/LoadingContext";
+import { DataProvider } from "@/context/DataContext";
 
 export default function RootLayout({
   children,
@@ -21,10 +22,12 @@ export default function RootLayout({
     <html lang="en" className="light">
       <body className={`${inter.className} min-h-screen bg-slate-50/30`}>
         <LoadingProvider>
-          <Navbar />
-          <main>
-            {children}
-          </main>
+          <DataProvider>
+            <Navbar />
+            <main>
+              {children}
+            </main>
+          </DataProvider>
         </LoadingProvider>
       </body>
     </html>

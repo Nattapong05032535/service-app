@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Building2, ShieldCheck, ClipboardCheck } from "lucide-react";
 
 export default async function LandingPage() {
+  redirect("/dashboard");
+  
+  // The rest of the code will be unreachable but kept for reference
   const session = await getSession();
   if (session) redirect("/dashboard");
 

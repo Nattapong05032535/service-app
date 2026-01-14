@@ -303,3 +303,17 @@ export async function importDataAction(rows: ImportRow[]) {
     revalidatePath("/products");
     return { success: true, count: successCount };
 }
+
+export async function getAllDataAction() {
+    const session = await getSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const companies = await dataProvider.getCompanies();
+    // For products, we fetch a larger batch or all if possible
+    const { data: products } = await dataProvider.getAllProducts({ pageSize: 1000 }); 
+
+    return {
+        companies,
+        products
+    };
+}
