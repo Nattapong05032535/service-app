@@ -159,7 +159,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                         </div>
                         ประวัติการซ่อมและบริการ
                     </h2>
-                    {activeWarranty && <AddServiceDialog warrantyId={String(activeWarranty.id)} />}
+                    <AddServiceDialog 
+                        productId={productId} 
+                        warrantyId={activeWarranty ? String(activeWarranty.id) : undefined} 
+                    />
                 </div>
 
                 <div className="space-y-4">
@@ -177,7 +180,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                                 <EditServiceDialog
                                     key={service.id}
                                     service={service}
-                                    warrantyId={String(warranty.id)}
+                                    warrantyId={warranty.id ? String(warranty.id) : undefined} 
                                     trigger={
                                         <Card className={cn(
                                             "overflow-hidden border-slate-100 hover:shadow-md transition-all cursor-pointer hover:border-primary/30",

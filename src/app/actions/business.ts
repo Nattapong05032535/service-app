@@ -108,6 +108,7 @@ export async function createWarranty(formData: FormData): Promise<void> {
                 const exitTime = pmDate.toISOString().slice(0, 16);
 
                 await dataProvider.createService({
+                    productId,
                     warrantyId,
                     type: "PM",
                     entryTime,
@@ -125,6 +126,7 @@ export async function createWarranty(formData: FormData): Promise<void> {
 }
 
 export async function createService(formData: FormData): Promise<void> {
+    const productId = formData.get("productId") as string;
     const warrantyId = formData.get("warrantyId") as string;
     const type = formData.get("type") as string;
     const entryTime = formData.get("entryTime") as string;
@@ -133,7 +135,8 @@ export async function createService(formData: FormData): Promise<void> {
 
     try {
         await dataProvider.createService({
-            warrantyId,
+            productId,
+            warrantyId: warrantyId || null,
             type,
             entryTime,
             exitTime,
@@ -143,14 +146,19 @@ export async function createService(formData: FormData): Promise<void> {
         throw new Error(e instanceof Error ? e.message : "Failed to create service");
     }
 
-    const w = await dataProvider.getWarrantyById(warrantyId);
-    if (w) {
-        revalidatePath(`/product/${(w as { productId: string | number }).productId}`);
+    if (productId) {
+        revalidatePath(`/product/${productId}`);
+    } else if (warrantyId) {
+        const w = await dataProvider.getWarrantyById(warrantyId);
+        if (w) {
+            revalidatePath(`/product/${(w as { productId: string | number }).productId}`);
+        }
     }
 }
 
 export async function updateServiceAction(formData: FormData): Promise<void> {
     const id = formData.get("id") as string;
+    const productId = formData.get("productId") as string;
     const entryTime = formData.get("entryTime") as string;
     const exitTime = formData.get("exitTime") as string;
     const description = formData.get("description") as string;
@@ -177,9 +185,13 @@ export async function updateServiceAction(formData: FormData): Promise<void> {
         throw new Error(e instanceof Error ? e.message : "Failed to update service");
     }
 
-    const w = await dataProvider.getWarrantyById(warrantyId);
-    if (w) {
-        revalidatePath(`/product/${(w as { productId: string | number }).productId}`);
+    if (productId) {
+        revalidatePath(`/product/${productId}`);
+    } else if (warrantyId && warrantyId !== "undefined") {
+        const w = await dataProvider.getWarrantyById(warrantyId);
+        if (w) {
+            revalidatePath(`/product/${(w as { productId: string | number }).productId}`);
+        }
     }
 }
 

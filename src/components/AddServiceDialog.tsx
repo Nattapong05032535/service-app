@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { createService } from "@/app/actions/business";
 import { useLoading } from "@/context/LoadingContext";
 
-export function AddServiceDialog({ warrantyId }: { warrantyId: string }) {
+export function AddServiceDialog({ productId, warrantyId }: { productId: string, warrantyId?: string }) {
     const [isOpen, setIsOpen] = useState(false);
     const { withLoading } = useLoading();
 
@@ -59,7 +59,8 @@ export function AddServiceDialog({ warrantyId }: { warrantyId: string }) {
                         </div>
 
                         <form action={handleSubmit} className="space-y-5">
-                            <input type="hidden" name="warrantyId" value={warrantyId} />
+                            <input type="hidden" name="productId" value={productId} />
+                            {warrantyId && <input type="hidden" name="warrantyId" value={warrantyId} />}
 
                             <div className="space-y-2">
                                 <label className="text-sm font-semibold flex items-center gap-2">

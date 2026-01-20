@@ -11,7 +11,7 @@ import { useLoading } from "@/context/LoadingContext";
 
 interface EditServiceDialogProps {
     service: Service;
-    warrantyId: string;
+    warrantyId?: string;
     trigger?: React.ReactNode;
 }
 
@@ -119,7 +119,8 @@ export function EditServiceDialog({ service, warrantyId, trigger }: EditServiceD
 
                         <form action={handleSubmit} className="space-y-6 overflow-y-auto pr-2 custom-scrollbar">
                             <input type="hidden" name="id" value={service.id} />
-                            <input type="hidden" name="warrantyId" value={warrantyId} />
+                            {(service as any).productId && <input type="hidden" name="productId" value={(service as any).productId} />}
+                            {warrantyId && warrantyId !== "undefined" && <input type="hidden" name="warrantyId" value={warrantyId} />}
                             <input type="hidden" name="partsjson" value={JSON.stringify(hasParts ? parts : [])} />
 
                             <div className="grid grid-cols-2 gap-4">

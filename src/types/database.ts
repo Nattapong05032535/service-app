@@ -41,4 +41,4 @@ export interface ServiceDetail {
 export type CompanyInput = Omit<NewCompany, 'createdBy'> & { createdBy?: string | number | null };
 export type ProductInput = Omit<NewProduct, 'companyId' | 'purchaseDate'> & { companyId?: string | number | null, purchaseDate?: string | Date | null };
 export type WarrantyInput = Omit<NewWarranty, 'productId' | 'startDate' | 'endDate'> & { productId?: string | number | null, startDate: string | Date, endDate: string | Date };
-export type ServiceInput = Omit<NewService, 'warrantyId' | 'entryTime' | 'exitTime'> & { warrantyId: string | number | null, entryTime: string | Date, exitTime: string | Date };
+export type ServiceInput = Omit<NewService, 'productId' | 'warrantyId' | 'entryTime' | 'exitTime'> & { productId?: string | number | null, warrantyId: string | number | null, entryTime: string | Date, exitTime: string | Date };

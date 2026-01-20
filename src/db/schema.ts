@@ -46,6 +46,7 @@ export const warranties = mssqlTable("warranties", {
 
 export const services = mssqlTable("services", {
     id: bigint("id", { mode: "number" }).primaryKey().identity(),
+    productId: bigint("product_id", { mode: "number" }).references(() => products.id),
     warrantyId: bigint("warranty_id", { mode: "number" }).references(() => warranties.id),
     type: nvarchar("type", { length: 50 }).notNull(), // PM, CM, SERVICE
     entryTime: datetime2("entry_time").notNull(),
