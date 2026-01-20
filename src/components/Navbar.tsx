@@ -14,7 +14,7 @@ export async function Navbar() {
             href="/customers"
             className="text-xl font-bold bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent"
           >
-            Service Ticket System
+            Service App
           </Link>
           {session && (
             <div className="hidden md:flex gap-4 text-lg font-medium">
