@@ -38,8 +38,8 @@ export async function createOrUpdateCompany(formData: FormData): Promise<void> {
         throw new Error(e instanceof Error ? e.message : "Failed to save company");
     }
 
-    revalidatePath("/dashboard");
-    redirect("/dashboard");
+    revalidatePath("/customers");
+    redirect("/customers");
 }
 
 export async function createProduct(formData: FormData): Promise<void> {
@@ -299,7 +299,7 @@ export async function importDataAction(rows: ImportRow[]) {
         }
     }
 
-    revalidatePath("/dashboard");
+    revalidatePath("/customers");
     revalidatePath("/products");
     return { success: true, count: successCount };
 }

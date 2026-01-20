@@ -20,18 +20,19 @@ export async function loginAction(formData: FormData): Promise<void> {
             redirect("/login?error=Invalid credentials");
         }
 
-        const isValid = await bcrypt.compare(password, (user as any).password);
+        const isValid = await bcrypt.compare(password, (user as { password: string }).password);
         if (!isValid) {
             redirect("/login?error=Invalid credentials");
         }
 
-        await setSession({ id: user.id.toString(), username: (user as any).username });
-    } catch (e: any) {
-        if (e.message?.includes("NEXT_REDIRECT")) throw e;
-        redirect(`/login?error=${encodeURIComponent(e.message || "Something went wrong")}`);
+        await setSession({ id: user.id.toString(), username: (user as { username: string }).username });
+    } catch (e: unknown) {
+        const error = e as Error;
+        if (error.message?.includes("NEXT_REDIRECT")) throw e;
+        redirect(`/login?error=${encodeURIComponent(error.message || "Something went wrong")}`);
     }
 
-    redirect("/dashboard");
+    redirect("/customers");
 }
 
 export async function registerAction(formData: FormData): Promise<void> {
@@ -55,11 +56,12 @@ export async function registerAction(formData: FormData): Promise<void> {
             throw new Error("Failed to register user");
         }
 
-        await setSession({ id: user.id.toString(), username: (user as any).username });
-    } catch (e: any) {
-        if (e.message?.includes("NEXT_REDIRECT")) throw e;
-        redirect(`/register?error=${encodeURIComponent(e.message || "Username already exists")}`);
+        await setSession({ id: user.id.toString(), username: (user as { username: string }).username });
+    } catch (e: unknown) {
+        const error = e as Error;
+        if (error.message?.includes("NEXT_REDIRECT")) throw e;
+        redirect(`/register?error=${encodeURIComponent(error.message || "Username already exists")}`);
     }
 
-    redirect("/dashboard");
+    redirect("/customers");
 }

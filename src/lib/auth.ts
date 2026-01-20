@@ -5,7 +5,7 @@ export async function getSession() {
     if (!session) return null;
     try {
         return JSON.parse(session);
-    } catch (e) {
+    } catch {
         return null;
     }
 }

@@ -560,7 +560,7 @@ export const dataProvider = {
                 filterByFormula: `{order_case} = '${orderCase}'`
             }).all();
             return records.map(r => {
-                const f = r.fields as any;
+                const f = r.fields as FieldSet;
                 return {
                     id: r.id,
                     orderCase: f.order_case,
@@ -615,16 +615,17 @@ export const dataProvider = {
                     }) as unknown as NewServicePart));
                 }
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Error in saveServiceParts:", error);
-            throw new Error(`Failed to save service parts: ${error.message || "Unknown error"}`);
+            const err = error as Error;
+            throw new Error(`Failed to save service parts: ${err.message || "Unknown error"}`);
         }
     },
 
     async createService(data: ServiceInput & { parts?: Partial<NewServicePart>[] }) {
         const { parts, ...serviceData } = data;
-        const input = serviceData as any;
-        let order_case = input.orderCase || input.order_case;
+        const input = serviceData as Record<string, unknown>;
+        let order_case = (input.orderCase || input.order_case) as string | undefined;
         
         if (!order_case && (data.type === 'PM' || data.type === 'CM' || data.type === 'SERVICE')) {
             const prefix = data.type === 'SERVICE' ? 'S' : data.type as 'PM' | 'CM';
@@ -657,8 +658,8 @@ export const dataProvider = {
             delete dataForAirtable.partsjson;
             
             const cleaned = cleanDataForAirtable(dataForAirtable);
-            const record = await airtableBase(TABLES.SERVICES).create(cleaned) as any;
-            result = { id: record.id, ...record.fields } as Service;
+            const record = await airtableBase(TABLES.SERVICES).create(cleaned) as unknown as { id: string; fields: FieldSet };
+            result = { id: record.id, ...record.fields } as unknown as Service;
         } else {
             await mssqlDb.insert(services).values({
                 ...serviceData,
@@ -707,15 +708,16 @@ export const dataProvider = {
                 const cleaned = cleanDataForAirtable(mappedData);
                 
                 console.log(`Updating Airtable Service ${id} with:`, cleaned);
-                const record = await airtableBase(TABLES.SERVICES).update(id.toString(), cleaned) as any;
+                const record = await airtableBase(TABLES.SERVICES).update(id.toString(), cleaned) as unknown as { id: string; fields: FieldSet };
                 
                 if (!orderCase) {
-                    orderCase = record.fields.order_case || record.fields.orderCase || record.fields.orderCase; // Fallbacks
+                    orderCase = (record.fields.order_case || record.fields.orderCase) as string | undefined; // Fallbacks
                 }
                 console.log(`Updated Service Order Case: ${orderCase}`);
-            } catch (error: any) {
+            } catch (error: unknown) {
                 console.error("Detailed Airtable Update Error:", error);
-                throw new Error(error.message || "Failed to update service in Airtable");
+                const err = error as Error;
+                throw new Error(err.message || "Failed to update service in Airtable");
             }
         } else {
             await mssqlDb.update(services).set({

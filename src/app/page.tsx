@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Building2, ShieldCheck, ClipboardCheck } from "lucide-react";
 
 export default async function LandingPage() {
-  redirect("/dashboard");
-  
+  redirect("/customers");
+
   // The rest of the code will be unreachable but kept for reference
   const session = await getSession();
-  if (session) redirect("/dashboard");
+  if (session) redirect("/customers");
 
   return (
     <div className="relative isolate overflow-hidden">
@@ -31,16 +31,23 @@ export default async function LandingPage() {
             </a>
           </div>
           <h1 className="mt-10 text-4xl font-extrabold tracking-tight text-slate-900 sm:text-6xl">
-            Streamline your <span className="text-blue-600">Customer Support</span> management
+            Streamline your{" "}
+            <span className="text-blue-600">Customer Support</span> management
           </h1>
           <p className="mt-6 text-lg leading-8 text-slate-600">
-            Track company profiles, assets, warranties, and service logs all in one place. Built for teams who care about excellence.
+            Track company profiles, assets, warranties, and service logs all in
+            one place. Built for teams who care about excellence.
           </p>
           <div className="mt-10 flex items-center gap-x-6">
             <Link href="/register">
-              <Button size="lg" className="rounded-full px-8">Get Started</Button>
+              <Button size="lg" className="rounded-full px-8">
+                Get Started
+              </Button>
             </Link>
-            <Link href="/login" className="text-sm font-semibold leading-6 text-slate-900">
+            <Link
+              href="/login"
+              className="text-sm font-semibold leading-6 text-slate-900"
+            >
               Log in <span aria-hidden="true">→</span>
             </Link>
           </div>
@@ -54,21 +61,27 @@ export default async function LandingPage() {
                   <Building2 className="w-6 h-6" />
                 </div>
                 <h3 className="text-xl font-bold">Company Profiles</h3>
-                <p className="text-slate-500">Manage tax IDs, contacts, and branch information seamlessly.</p>
+                <p className="text-slate-500">
+                  Manage tax IDs, contacts, and branch information seamlessly.
+                </p>
               </div>
               <div className="p-8 rounded-2xl bg-white shadow-xl border border-slate-100 flex flex-col gap-4">
                 <div className="w-12 h-12 rounded-lg bg-indigo-600 flex items-center justify-center text-white">
                   <ShieldCheck className="w-6 h-6" />
                 </div>
                 <h3 className="text-xl font-bold">Warranty Tracking</h3>
-                <p className="text-slate-500">Never miss a renewal with automated warranty and MA tracking.</p>
+                <p className="text-slate-500">
+                  Never miss a renewal with automated warranty and MA tracking.
+                </p>
               </div>
               <div className="p-8 rounded-2xl bg-white shadow-xl border border-slate-100 flex flex-col gap-4">
                 <div className="w-12 h-12 rounded-lg bg-emerald-600 flex items-center justify-center text-white">
                   <ClipboardCheck className="w-6 h-6" />
                 </div>
                 <h3 className="text-xl font-bold">Service Logging</h3>
-                <p className="text-slate-500">Log PM, CM, and on-site visits with precise entry/exit timing.</p>
+                <p className="text-slate-500">
+                  Log PM, CM, and on-site visits with precise entry/exit timing.
+                </p>
               </div>
             </div>
           </div>
