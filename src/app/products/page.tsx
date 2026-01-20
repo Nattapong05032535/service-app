@@ -37,35 +37,38 @@ export default async function ProductsPage({
     pageSize: pageSize,
   });
 
-  const now = new Date();
-  const nextMonth = new Date();
-  nextMonth.setMonth(now.getMonth() + 1);
-
-  // Process products with status and sort
+  // Process products with status - Use Airtable's pre-calculated fields to avoid Invalid Date issues
   const processedProducts = allProducts.map((p: ProductWithLatestWarranty) => {
     let warrantyStatus = "none";
     let statusLabel = "ไม่มีข้อมูลการประกัน";
     let statusColor = "bg-slate-100 text-slate-700";
     let Icon = ShieldX;
 
-    if (p.latestWarranty) {
-      const endDate = new Date(p.latestWarranty.endDate);
-      if (endDate < now) {
-        warrantyStatus = "expired";
-        statusLabel = "หมดประกันแล้ว";
-        statusColor = "bg-red-100 text-red-700 border-red-200";
-        Icon = ShieldX;
-      } else if (endDate <= nextMonth) {
-        warrantyStatus = "near_expiry";
-        statusLabel = "ใกล้หมดประกัน";
-        statusColor = "bg-amber-100 text-amber-700 border-amber-200";
-        Icon = ShieldAlert;
-      } else {
-        warrantyStatus = "active";
-        statusLabel = "อยู่ในประกัน";
-        statusColor = "bg-emerald-100 text-emerald-700 border-emerald-200";
-        Icon = ShieldCheck;
-      }
+    // Use Airtable's pre-calculated warranty status to avoid Invalid Date issues
+    const airtableStatus = p.airtableWarrantyStatus || "⚠️ No Warranty";
+
+    if (p.isNearExpiry) {
+      // Near expiry takes priority
+      warrantyStatus = "near_expiry";
+      statusLabel = "ใกล้หมดประกัน";
+      statusColor = "bg-amber-100 text-amber-700 border-amber-200";
+      Icon = ShieldAlert;
+    } else if (airtableStatus === "✅ Active") {
+      warrantyStatus = "active";
+      statusLabel = "อยู่ในประกัน";
+      statusColor = "bg-emerald-100 text-emerald-700 border-emerald-200";
+      Icon = ShieldCheck;
+    } else if (airtableStatus === "❌ Expired") {
+      warrantyStatus = "expired";
+      statusLabel = "หมดประกันแล้ว";
+      statusColor = "bg-red-100 text-red-700 border-red-200";
+      Icon = ShieldX;
+    } else {
+      // '⚠️ No Warranty' or unknown status
+      warrantyStatus = "none";
+      statusLabel = "ไม่มีข้อมูลการประกัน";
+      statusColor = "bg-slate-100 text-slate-700";
+      Icon = ShieldX;
     }
 
     return {
@@ -174,7 +177,7 @@ export default async function ProductsPage({
                       <div
                         className={cn(
                           "w-12 h-12 rounded-xl flex items-center justify-center transition-colors shrink-0",
-                          product.statusColor
+                          product.statusColor,
                         )}
                       >
                         <product.Icon className="w-6 h-6" />
@@ -188,7 +191,7 @@ export default async function ProductsPage({
                             variant="secondary"
                             className={cn(
                               "text-[10px] uppercase font-bold",
-                              product.statusColor
+                              product.statusColor,
                             )}
                           >
                             {product.statusLabel}
@@ -207,7 +210,7 @@ export default async function ProductsPage({
                               <Calendar className="w-3.5 h-3.5" />
                               หมดเขต:{" "}
                               {new Date(
-                                product.latestWarranty.endDate
+                                product.latestWarranty.endDate,
                               ).toLocaleDateString("th-TH", {
                                 day: "2-digit",
                                 month: "short",

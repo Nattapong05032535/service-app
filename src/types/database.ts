@@ -21,6 +21,8 @@ export type NewServicePart = typeof serviceParts.$inferInsert;
 export interface ProductWithLatestWarranty extends Product {
     companyName: string;
     latestWarranty: Warranty | null;
+    airtableWarrantyStatus?: string; // '✅ Active', '❌ Expired', '⚠️ No Warranty'
+    isNearExpiry?: boolean;
 }
 
 export interface ServiceWithWarranty {

@@ -203,9 +203,12 @@ export const dataProvider = {
             // 2. Status Filter (Using the new Airtable fields)
             if (status && status !== 'all') {
                 if (status === 'active') {
-                    filterParts.push(`{warrantyStatus} = '✅ Active'`);
+                    // Active but NOT near expiry (exclude near_expiry from active)
+                    // Airtable checkbox uses TRUE()/FALSE()
+                    filterParts.push(`AND({warrantyStatus} = '✅ Active', NOT({isNearExpiry}))`);
                 } else if (status === 'near_expiry') {
-                    filterParts.push(`{isNearExpiry} = 1`);
+                    // Only near expiry products (which are also technically Active)
+                    filterParts.push(`{isNearExpiry} = TRUE()`);
                 } else if (status === 'expired') {
                     filterParts.push(`OR({warrantyStatus} = '❌ Expired', {warrantyStatus} = '⚠️ No Warranty')`);
                 }
@@ -273,6 +276,9 @@ export const dataProvider = {
                     id: r.id,
                     companyId,
                     companyName: company ? (company.fields as FieldSet).name as string : 'Unknown',
+                    // Pass Airtable's pre-calculated status fields to avoid client-side recalculation issues
+                    airtableWarrantyStatus: fields.warrantyStatus as string || '⚠️ No Warranty',
+                    isNearExpiry: Boolean(fields.isNearExpiry),
                     latestWarranty: fields.latestWarrantyEndDate ? {
                         endDate: new Date(fields.latestWarrantyEndDate as string)
                     } : null
