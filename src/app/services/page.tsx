@@ -50,7 +50,7 @@ export default async function ServicesPage({
   };
 
   return (
-    <div className="container mx-auto py-10 px-4 space-y-10">
+    <div className="container mx-auto py-10 px-10 space-y-10 bg-gray-50">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>

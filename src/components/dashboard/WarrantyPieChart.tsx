@@ -21,10 +21,10 @@ interface WarrantyPieChartProps {
 
 export default function WarrantyPieChart({ data }: WarrantyPieChartProps) {
   const chartData = [
-    { name: "Active", value: data.active, color: "#10b981" },
-    { name: "Near Expiry", value: data.nearExpiry, color: "#f59e0b" },
-    { name: "Expired", value: data.expired, color: "#ef4444" },
-    { name: "No Warranty", value: data.noWarranty, color: "#6b7280" },
+    { name: "ยังมีการรับประกัน", value: data.active, color: "#10b981" },
+    { name: "ใกล้หมดประกัน", value: data.nearExpiry, color: "#f59e0b" },
+    { name: "หมดประกันแล้ว", value: data.expired, color: "#ef4444" },
+    { name: "ไม่มีการรับประกัน", value: data.noWarranty, color: "#6b7280" },
   ].filter((item) => item.value > 0);
 
   return (

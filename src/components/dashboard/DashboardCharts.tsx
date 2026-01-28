@@ -26,10 +26,10 @@ export default function DashboardCharts({
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
         <div className="mb-4">
           <h3 className="text-lg font-semibold text-slate-800">
-            Warranty Distribution
+            สัดส่วนการรับประกัน
           </h3>
           <p className="text-sm text-slate-500">
-            Overview of current product warranty statuses
+            ภาพรวมสถานะการรับประกันสินค้าทั้งหมด
           </p>
         </div>
         <WarrantyPieChart data={warrantyStats} />
@@ -37,10 +37,10 @@ export default function DashboardCharts({
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
         <div className="mb-4">
           <h3 className="text-lg font-semibold text-slate-800">
-            Service Activity Trends
+            แนวโน้มงานบริการ
           </h3>
           <p className="text-sm text-slate-500">
-            Monthly breakdown of service jobs (last 6 months)
+            สรุปงานบริการรายเดือน (ย้อนหลัง 6 เดือน)
           </p>
         </div>
         <ServiceBarChart data={monthlyServiceData} />

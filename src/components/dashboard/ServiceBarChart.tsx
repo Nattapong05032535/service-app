@@ -61,19 +61,19 @@ export default function ServiceBarChart({ data }: ServiceBarChartProps) {
           <Legend verticalAlign="top" align="right" height={36} />
           <Bar
             dataKey="PM"
-            name="Preventive"
+            name="งานบำรุงรักษา (PM)"
             fill="#3b82f6"
             radius={[4, 4, 0, 0]}
           />
           <Bar
             dataKey="CM"
-            name="Corrective"
+            name="งานซ่อมแซม (CM)"
             fill="#ec4899"
             radius={[4, 4, 0, 0]}
           />
           <Bar
             dataKey="SERVICE"
-            name="General"
+            name="งานบริการทั่วไป"
             fill="#10b981"
             radius={[4, 4, 0, 0]}
           />

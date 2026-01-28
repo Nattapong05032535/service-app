@@ -137,7 +137,7 @@ export default async function DashboardPage() {
                           </span>
                           <div className="flex items-center gap-2 mt-1">
                             <span className="text-xs font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded uppercase">
-                              SN: {item.serialNumber}
+                              รหัสสินค้า: {item.serialNumber}
                             </span>
                             <span className="text-sm text-slate-500">
                               | {item.companyName}
