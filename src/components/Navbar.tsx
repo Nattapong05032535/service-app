@@ -42,12 +42,6 @@ export async function Navbar() {
               >
                 ประวัติบริการ
               </Link>
-              <Link
-                href="/calendar"
-                className="hover:text-primary transition-colors"
-              >
-                ปฏิทินงาน
-              </Link>
             </div>
           )}
         </div>

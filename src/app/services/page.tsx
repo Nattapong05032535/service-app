@@ -11,10 +11,12 @@ import {
   Wrench,
   ChevronRight,
   Calendar,
-  User,
   Building2,
   Package,
+  History,
 } from "lucide-react";
+import ServiceCalendarContainer from "@/app/calendar/ServiceCalendarContainer";
+import { cn } from "@/lib/utils";
 
 export default async function ServicesPage({
   searchParams,
@@ -25,27 +27,64 @@ export default async function ServicesPage({
   if (!session) redirect("/login");
 
   const { q = "", type = "all" } = await searchParams;
+
+  // 1. Fetch ALL services for the calendar overview
+  const { data: calendarServices } = await dataProvider.getAllServices({
+    pageSize: 1000,
+  });
+
+  // 2. Fetch FILTERED services for the list below
   const { data: services } = await dataProvider.getAllServices({
     query: q,
     type: type,
     pageSize: 50,
   });
 
+  const isCompleted = (status: string) => {
+    const s = (status || "").toLowerCase();
+    return (
+      s.includes("success") ||
+      s.includes("เสร็จสิ้น") ||
+      s.includes("เรียบร้อย")
+    );
+  };
+
   return (
-    <div className="container mx-auto py-10 px-4">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+    <div className="container mx-auto py-10 px-4 space-y-10">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-4xl font-extrabold tracking-tight">
+          <h1 className="text-4xl font-extrabold tracking-tight flex items-center gap-3">
+            <History className="w-10 h-10 text-primary" />
             ประวัติงานบริการ
           </h1>
           <p className="text-muted-foreground mt-1">
-            ติดตามและจัดการรายการงานบริการทั้งหมดในระบบ
+            ดูแผนงานปฏิทินและตรวจสอบประวัติงานบริการทั้งหมด
           </p>
         </div>
       </div>
 
+      {/* Top Section: Calendar Overview */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Calendar className="w-5 h-5 text-primary" />
+          <h2 className="text-xl font-bold">ปฏิทินแผนงานและประวัติ</h2>
+        </div>
+        <ServiceCalendarContainer initialServices={calendarServices} />
+      </div>
+
+      <hr className="border-slate-200" />
+
+      {/* Bottom Section: Search and List */}
       <div className="grid gap-6">
-        <Card className="p-4 shadow-sm">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Wrench className="w-5 h-5 text-primary" />
+            <h2 className="text-xl font-bold">รายการงานบริการทั้งหมด</h2>
+          </div>
+        </div>
+
+        <Card className="p-4 shadow-sm border-none bg-slate-50/50">
           <div className="flex flex-col lg:flex-row gap-4">
             <form action="/services" method="GET" className="flex-1 flex gap-2">
               <div className="relative flex-1 max-w-[500px]">
@@ -54,11 +93,11 @@ export default async function ServicesPage({
                   name="q"
                   defaultValue={q}
                   placeholder="ค้นหาเลขที่บิล, ชื่อสินค้า, หรือชื่อลูกค้า..."
-                  className="pl-10"
+                  className="pl-10 bg-white"
                 />
               </div>
-              <Button type="submit" size="sm" className="rounded-full h-full">
-                <Search className="w-4 h-4" />
+              <Button type="submit" size="sm" className="rounded-full px-6">
+                ค้นหา
               </Button>
               <input type="hidden" name="type" value={type} />
             </form>
@@ -75,7 +114,6 @@ export default async function ServicesPage({
                 <Button
                   variant={type === "PM" ? "primary" : "outline"}
                   size="sm"
-                  className="gap-2"
                 >
                   PM
                 </Button>
@@ -84,7 +122,6 @@ export default async function ServicesPage({
                 <Button
                   variant={type === "CM" ? "primary" : "outline"}
                   size="sm"
-                  className="gap-2"
                 >
                   CM
                 </Button>
@@ -93,7 +130,6 @@ export default async function ServicesPage({
                 <Button
                   variant={type === "SERVICE" ? "primary" : "outline"}
                   size="sm"
-                  className="gap-2"
                 >
                   General
                 </Button>
@@ -116,10 +152,24 @@ export default async function ServicesPage({
           <div className="grid gap-4">
             {services.map((service) => (
               <Link key={service.id} href={`/service/${service.id}`}>
-                <Card className="hover:border-primary transition-all group cursor-pointer overflow-hidden border-l-4 border-l-blue-500">
+                <Card
+                  className={cn(
+                    "hover:border-primary transition-all group cursor-pointer overflow-hidden border-l-4",
+                    isCompleted(service.status)
+                      ? "border-l-amber-400"
+                      : "border-l-blue-500",
+                  )}
+                >
                   <CardContent className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-4 flex-1">
-                      <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                      <div
+                        className={cn(
+                          "w-12 h-12 rounded-xl flex items-center justify-center shrink-0 group-hover:text-white transition-colors",
+                          isCompleted(service.status)
+                            ? "bg-amber-50 text-amber-600 group-hover:bg-amber-500"
+                            : "bg-blue-50 text-blue-600 group-hover:bg-blue-600",
+                        )}
+                      >
                         <Wrench className="w-6 h-6" />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -129,13 +179,22 @@ export default async function ServicesPage({
                           </h3>
                           <Badge
                             variant="secondary"
-                            className="text-[10px] uppercase font-bold bg-blue-100 text-blue-700"
+                            className={cn(
+                              "text-[10px] uppercase font-bold",
+                              isCompleted(service.status)
+                                ? "bg-amber-100 text-amber-700"
+                                : "bg-blue-100 text-blue-700",
+                            )}
                           >
                             {service.type}
                           </Badge>
                           <Badge
                             variant="outline"
-                            className="text-[10px] truncate max-w-[150px]"
+                            className={cn(
+                              "text-[10px] truncate max-w-[150px]",
+                              isCompleted(service.status) &&
+                                "border-amber-200 text-amber-600 font-bold",
+                            )}
                           >
                             {service.status}
                           </Badge>
@@ -157,12 +216,6 @@ export default async function ServicesPage({
                                 )
                               : "-"}
                           </span>
-                          {service.techService && (
-                            <span className="flex items-center gap-1">
-                              <User className="w-3.5 h-3.5" />
-                              {service.techService}
-                            </span>
-                          )}
                         </div>
                       </div>
                     </div>
