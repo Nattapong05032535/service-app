@@ -256,7 +256,7 @@ export default function ServiceCalendarContainer({
                   </Badge>
                 </div>
 
-                <div className="max-h-[200px] overflow-y-auto space-y-2 pr-2 scrollbar-thin scrollbar-thumb-slate-200">
+                <div className="max-h-[250px] overflow-y-auto space-y-2 pr-2 scrollbar-thin scrollbar-thumb-slate-200">
                   {selectedServices.length === 0 ? (
                     <div className="p-4 text-center text-slate-400 italic text-xs border border-dashed rounded-lg bg-slate-50/50">
                       ไม่มีรายการงานในวันที่เลือก
@@ -308,13 +308,13 @@ export default function ServiceCalendarContainer({
       {/* RIGHT: Monthly Stats & Chart */}
       <div className={cn("space-y-6", !compact ? "lg:col-span-5" : "w-full")}>
         <Card className="border-none shadow-premium bg-white h-full overflow-hidden">
-          <CardHeader className="bg-slate-100 border-b border-slate-100 p-4 pb-3">
+          <CardHeader className="bg-orange-100 border-b border-orange-200 p-4 pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-bold flex items-center gap-2">
                 <BarChart2 className="w-5 h-5 text-primary" />
                 สรุปทั้งเดือน
               </CardTitle>
-              <div className="text-[10px] font-bold text-slate-400 uppercase">
+              <div className="text-[14px] font-bold text-slate-800 uppercase">
                 {format(month, "MMMM yyyy", { locale: th })}
               </div>
             </div>
@@ -339,11 +339,11 @@ export default function ServiceCalendarContainer({
                         {monthlyStats.total}
                       </p>
                     </div>
-                    <div className="bg-amber-50 p-2 rounded-lg border border-amber-100">
-                      <p className="text-[9px] text-amber-600 uppercase font-bold text-center">
+                    <div className="bg-green-50 p-2 rounded-lg border border-green-100">
+                      <p className="text-[9px] text-green-600 uppercase font-bold text-center">
                         Completed
                       </p>
-                      <p className="text-lg font-bold text-center text-amber-700">
+                      <p className="text-lg font-bold text-center text-green-700">
                         {monthlyStats.counts.COMPLETED}
                       </p>
                     </div>
