@@ -69,51 +69,48 @@ export const dataProvider = {
     // === COMPANIES ===
     async getCompanies(query?: string) {
         if (isAirtable) {
-            let companyIdsFromProducts: string[] = [];
-            if (query) {
-                // 1. Search products by serial number to get company IDs
-                const productRecords = await airtableBase(TABLES.PRODUCTS).select({
-                    filterByFormula: `SEARCH('${query.toLowerCase()}', LOWER({serialNumber}))`
-                }).all();
-                companyIdsFromProducts = productRecords
-                    .map(r => Array.isArray(r.fields.companyId) ? r.fields.companyId[0] : (r.fields.companyId as string))
-                    .filter(Boolean);
-            }
-
-            // 2. Build final company filter
-            let filter = '';
-            if (query) {
-                const searchTerms = [
-                    `SEARCH('${query.toLowerCase()}', LOWER({name}))`,
-                    `SEARCH('${query.toLowerCase()}', LOWER({nameSecondary}))`,
-                    `SEARCH('${query.toLowerCase()}', LOWER({taxId}))`
-                ];
-
-                // Add company IDs found via product serial search
-                if (companyIdsFromProducts.length > 0) {
-                    const idFilters = companyIdsFromProducts.map(id => `RECORD_ID() = '${id}'`);
-                    searchTerms.push(...idFilters);
-                }
-
-                filter = `OR(${searchTerms.join(',')})`;
-            }
-
-            const records = await airtableBase(TABLES.COMPANIES).select({
-                filterByFormula: filter
-            }).all();
-
-            return records.map(r => ({
+            // Use cache
+            const { getCachedData } = await import('./cache');
+            const cached = await getCachedData();
+            
+            let results = cached.companies.map(r => ({
                 id: r.id,
                 ...r.fields,
                 createdBy: Array.isArray(r.fields.createdBy) ? r.fields.createdBy[0] : r.fields.createdBy
             }));
+
+            if (query) {
+                const q = query.toLowerCase();
+                
+                // Find company IDs from products matching serial number
+                const companyIdsFromProducts = cached.products
+                    .filter(p => {
+                        const serial = (p.fields.serialNumber as string || '').toLowerCase();
+                        return serial.includes(q);
+                    })
+                    .map(p => Array.isArray(p.fields.companyId) ? p.fields.companyId[0] : p.fields.companyId)
+                    .filter(Boolean);
+
+                // Filter companies
+                results = results.filter(c => {
+                    const name = ((c as Record<string, unknown>).name as string || '').toLowerCase();
+                    const nameSecondary = ((c as Record<string, unknown>).nameSecondary as string || '').toLowerCase();
+                    const taxId = ((c as Record<string, unknown>).taxId as string || '').toLowerCase();
+                    
+                    return name.includes(q) || 
+                           nameSecondary.includes(q) || 
+                           taxId.includes(q) ||
+                           companyIdsFromProducts.includes(c.id);
+                });
+            }
+
+            return results;
         } else {
             return await mssqlDb.select().from(companies)
                 .where(query ? or(
                     like(companies.name, `%${query}%`),
                     like(companies.nameSecondary, `%${query}%`),
                     like(companies.taxId, `%${query}%`),
-                    // Subquery to find companies by product serial number
                     exists(
                         mssqlDb.select()
                             .from(products)
@@ -125,15 +122,15 @@ export const dataProvider = {
 
     async getCompanyById(id: string | number) {
         if (isAirtable) {
-            try {
-                const record = await airtableBase(TABLES.COMPANIES).find(id.toString());
-                const fields = record.fields as FieldSet;
-                return {
-                    id: record.id,
-                    ...fields,
-                    createdBy: Array.isArray(fields.createdBy) ? fields.createdBy[0] : (fields.createdBy as string)
-                } as unknown as Company;
-            } catch { return null; }
+            const { getCachedData } = await import('./cache');
+            const cached = await getCachedData();
+            const record = cached.companies.find(c => c.id === id.toString());
+            if (!record) return null;
+            return {
+                id: record.id,
+                ...record.fields,
+                createdBy: Array.isArray(record.fields.createdBy) ? record.fields.createdBy[0] : record.fields.createdBy
+            } as unknown as Company;
         } else {
             const [company] = await mssqlDb.select().from(companies).where(eq(companies.id, Number(id)));
             return company || null;
@@ -142,12 +139,11 @@ export const dataProvider = {
 
     async findCompanyByName(name: string) {
         if (isAirtable) {
-            const records = await airtableBase(TABLES.COMPANIES).select({
-                filterByFormula: `{name} = '${name.replace(/'/g, "\\'")}'`,
-                maxRecords: 1
-            }).firstPage();
-            if (records.length === 0) return null;
-            return { id: records[0].id, ...records[0].fields } as unknown as Company;
+            const { getCachedData } = await import('./cache');
+            const cached = await getCachedData();
+            const record = cached.companies.find(c => c.fields.name === name);
+            if (!record) return null;
+            return { id: record.id, ...record.fields } as unknown as Company;
         } else {
             const [company] = await mssqlDb.select().from(companies).where(eq(companies.name, name));
             return company || null;
@@ -157,14 +153,18 @@ export const dataProvider = {
     // === PRODUCTS ===
     async getProductsByCompany(companyId: string | number) {
         if (isAirtable) {
-            const records = await airtableBase(TABLES.PRODUCTS).select().all();
-            return records
+            const { getCachedData } = await import('./cache');
+            const cached = await getCachedData();
+            return cached.products
+                .filter(r => {
+                    const cId = Array.isArray(r.fields.companyId) ? r.fields.companyId[0] : r.fields.companyId;
+                    return cId === companyId.toString();
+                })
                 .map(r => ({
                     id: r.id,
                     ...r.fields,
                     companyId: Array.isArray(r.fields.companyId) ? r.fields.companyId[0] : r.fields.companyId
-                }))
-                .filter(p => p.companyId === companyId);
+                }));
         } else {
             return await mssqlDb.select().from(products).where(eq(products.companyId, Number(companyId)));
         }
@@ -172,15 +172,15 @@ export const dataProvider = {
 
     async getProductById(id: string | number) {
         if (isAirtable) {
-            try {
-                const record = await airtableBase(TABLES.PRODUCTS).find(id.toString());
-                const fields = record.fields as FieldSet;
-                return {
-                    id: record.id,
-                    ...fields,
-                    companyId: Array.isArray(fields.companyId) ? fields.companyId[0] : (fields.companyId as string)
-                } as unknown as Product;
-            } catch { return null; }
+            const { getCachedData } = await import('./cache');
+            const cached = await getCachedData();
+            const record = cached.products.find(p => p.id === id.toString());
+            if (!record) return null;
+            return {
+                id: record.id,
+                ...record.fields,
+                companyId: Array.isArray(record.fields.companyId) ? record.fields.companyId[0] : record.fields.companyId
+            } as unknown as Product;
         } else {
             const [product] = await mssqlDb.select().from(products).where(eq(products.id, Number(id)));
             return product || null;
@@ -196,90 +196,64 @@ export const dataProvider = {
         const { query, status, page = 1, pageSize = 50 } = options;
 
         if (isAirtable) {
-            const filterParts = [];
+            // Use cache
+            const { getCachedData } = await import('./cache');
+            const cached = await getCachedData();
             
-            // 1. Search Filter
+            let filteredProducts = [...cached.products];
+            
+            // 1. Search Filter (in memory)
             if (query) {
-                filterParts.push(`OR(SEARCH('${query.toLowerCase()}', LOWER({name})), SEARCH('${query.toLowerCase()}', LOWER({serialNumber})))`);
+                const q = query.toLowerCase();
+                filteredProducts = filteredProducts.filter(r => {
+                    const name = (r.fields.name as string || '').toLowerCase();
+                    const serial = (r.fields.serialNumber as string || '').toLowerCase();
+                    return name.includes(q) || serial.includes(q);
+                });
             }
             
-            // 2. Status Filter (Using the new Airtable fields)
+            // 2. Status Filter (in memory)
             if (status && status !== 'all') {
-                if (status === 'active') {
-                    // Active but NOT near expiry (exclude near_expiry from active)
-                    // Airtable checkbox uses TRUE()/FALSE()
-                    filterParts.push(`AND({warrantyStatus} = '✅ Active', NOT({isNearExpiry}))`);
-                } else if (status === 'near_expiry') {
-                    // Only near expiry products (which are also technically Active)
-                    filterParts.push(`{isNearExpiry} = TRUE()`);
-                } else if (status === 'expired') {
-                    filterParts.push(`OR({warrantyStatus} = '❌ Expired', {warrantyStatus} = '⚠️ No Warranty')`);
-                }
+                filteredProducts = filteredProducts.filter(r => {
+                    const warrantyStatus = r.fields.warrantyStatus as string || '';
+                    const isNearExpiry = Boolean(r.fields.isNearExpiry);
+                    
+                    if (status === 'active') {
+                        return warrantyStatus === '✅ Active' && !isNearExpiry;
+                    } else if (status === 'near_expiry') {
+                        return isNearExpiry;
+                    } else if (status === 'expired') {
+                        return warrantyStatus === '❌ Expired' || warrantyStatus === '⚠️ No Warranty';
+                    }
+                    return true;
+                });
             }
             
-            const filterFormula = filterParts.length > 1 ? `AND(${filterParts.join(',')})` : filterParts[0] || '';
+            // 3. Sort by warranty end date
+            filteredProducts.sort((a, b) => {
+                const dateA = String(a.fields.latestWarrantyEndDate || '');
+                const dateB = String(b.fields.latestWarrantyEndDate || '');
+                return dateA.localeCompare(dateB);
+            });
             
-            // 3. Counting (Airtable bit: fetching just IDs to count is faster, but still multiple requests)
-            // To be fast, we'll fetch only what we need for the current page.
-            // Note: Airtable SDK doesn't support offset easily, we'll fetch up to (page * pageSize)
-            // and slice the last pageSize. For 6,000 records, this is acceptable compared to fetching ALL data.
-            const maxRecords = page * pageSize;
+            const totalCount = filteredProducts.length;
             
-            // Build select options, only include filterByFormula if it's not empty
-            const selectOptions: {
-                filterByFormula?: string;
-                maxRecords: number;
-                sort: { field: string; direction: 'asc' | 'desc' }[];
-            } = {
-                maxRecords: maxRecords,
-                sort: [{ field: 'latestWarrantyEndDate', direction: 'asc' }] // Sort by expiry
-            };
-            if (filterFormula) {
-                selectOptions.filterByFormula = filterFormula;
-            }
-
-            const records = await airtableBase(TABLES.PRODUCTS).select(selectOptions).all();
-
-            // We also need a total count for pagination UI. 
-            // Fetching ALL just to count is slow. Let's do a separate small request for total count logic if needed,
-            // or just return 0 if we don't want to block.
-            // Alternative: Fetch all IDs only (fields: [])
-            const countOptions: { filterByFormula?: string; fields: string[] } = { fields: [] };
-            if (filterFormula) {
-                countOptions.filterByFormula = filterFormula;
-            }
-            const allIds = await airtableBase(TABLES.PRODUCTS).select(countOptions).all();
-            const totalCount = allIds.length;
-
-            const pageData = records.slice((page - 1) * pageSize, page * pageSize);
+            // 4. Pagination
+            const pageData = filteredProducts.slice((page - 1) * pageSize, page * pageSize);
             
-            // 4. Fetch only relevant companies to avoid loading thousands of companies
-            const relevantCompanyIds = [...new Set(pageData.map(r => {
-                const f = r.fields;
-                return Array.isArray(f.companyId) ? f.companyId[0] : (f.companyId as string);
-            }).filter(Boolean))];
-
-            let companyRecords: readonly { id: string; fields: FieldSet }[] = [];
-            if (relevantCompanyIds.length > 0) {
-                const companyFilter = `OR(${relevantCompanyIds.map(id => `RECORD_ID()='${id}'`).join(',')})`;
-                companyRecords = await airtableBase(TABLES.COMPANIES).select({
-                    filterByFormula: companyFilter
-                }).all();
-            }
-
+            // 5. Map to result format
             const data = pageData.map(r => {
-
                 const fields = r.fields as FieldSet;
                 const companyId = Array.isArray(fields.companyId) ? fields.companyId[0] : (fields.companyId as string);
-                const company = companyRecords.find(c => c.id === companyId);
                 
-                // Map the pre-calculated Airtable fields back to our UI structure
+                // Find company from cache
+                const company = cached.companies.find(c => c.id === companyId);
+                
                 return {
                     ...fields,
                     id: r.id,
                     companyId,
                     companyName: company ? (company.fields as FieldSet).name as string : 'Unknown',
-                    // Pass Airtable's pre-calculated status fields to avoid client-side recalculation issues
                     airtableWarrantyStatus: fields.warrantyStatus as string || '⚠️ No Warranty',
                     isNearExpiry: Boolean(fields.isNearExpiry),
                     latestWarranty: fields.latestWarrantyEndDate ? {
@@ -326,14 +300,16 @@ export const dataProvider = {
     async getAllWarrantiesForProducts(productIds: (string | number)[]) {
         if (isAirtable) {
             if (productIds.length === 0) return [];
-            const records = await airtableBase(TABLES.WARRANTIES).select().all();
-            return records
+            const { getCachedData } = await import('./cache');
+            const cached = await getCachedData();
+            
+            return cached.warranties
                 .map(r => ({
                     id: r.id,
                     ...r.fields,
-                    productId: Array.isArray(r.fields.productId) ? r.fields.productId[0] : r.fields.productId
+                    productId: Array.isArray(r.fields.productId) ? r.fields.productId[0] : (r.fields.productId as string)
                 }))
-                .filter(w => productIds.includes(w.productId));
+                .filter(w => productIds.map(String).includes(String(w.productId)));
         } else {
             if (productIds.length === 0) return [];
             return await mssqlDb.select().from(warranties).where(sql`${warranties.productId} IN (${sql.join(productIds, sql`, `)})`);
@@ -342,16 +318,24 @@ export const dataProvider = {
 
     async getWarrantiesByProduct(productId: string | number) {
         if (isAirtable) {
-            const records = await airtableBase(TABLES.WARRANTIES).select({
-                sort: [{ field: 'endDate', direction: 'desc' }]
-            }).all();
-            return records
+            const { getCachedData } = await import('./cache');
+            const cached = await getCachedData();
+            
+            return cached.warranties
+                .filter(r => {
+                    const pId = Array.isArray(r.fields.productId) ? r.fields.productId[0] : r.fields.productId;
+                    return pId === productId.toString();
+                })
                 .map(r => ({
                     id: r.id,
                     ...r.fields,
-                    productId: Array.isArray(r.fields.productId) ? r.fields.productId[0] : r.fields.productId
+                    productId: Array.isArray(r.fields.productId) ? r.fields.productId[0] : (r.fields.productId as string)
                 }))
-                .filter(w => w.productId === productId);
+                .sort((a, b) => {
+                    const dateA = String((a as Record<string, unknown>).endDate || '');
+                    const dateB = String((b as Record<string, unknown>).endDate || '');
+                    return dateB.localeCompare(dateA); // desc
+                });
         } else {
             return await mssqlDb.select().from(warranties)
                 .where(eq(warranties.productId, Number(productId)))
@@ -362,25 +346,27 @@ export const dataProvider = {
     // === SERVICES ===
     async getServicesByProduct(productId: string | number): Promise<ServiceWithWarranty[]> {
         if (isAirtable) {
-            // 1. Get all warranties for this product (for linking warranty info)
-            const productWarranties = await this.getWarrantiesByProduct(productId);
+            const { getCachedData } = await import('./cache');
+            const cached = await getCachedData();
+            
+            // 1. Get warranties for this product from cache
+            const productWarranties = cached.warranties
+                .filter(r => {
+                    const pId = Array.isArray(r.fields.productId) ? r.fields.productId[0] : r.fields.productId;
+                    return pId === productId.toString();
+                })
+                .map(r => ({
+                    id: r.id,
+                    ...r.fields,
+                    productId: Array.isArray(r.fields.productId) ? r.fields.productId[0] : r.fields.productId
+                }));
 
-            // 2. Fetch all services and filter by productId
-            const allRecords = await airtableBase(TABLES.SERVICES).select({
-                sort: [{ field: 'entryTime', direction: 'desc' }]
-            }).all();
-
-            console.log("=== DEBUG: Fetching services for productId:", productId);
-            console.log("Total records in Services table:", allRecords.length);
-
-            // Filter records that have this productId
-            const records = allRecords.filter(r => {
+            // 2. Filter services by productId from cache
+            const records = cached.services.filter(r => {
                 const fields = r.fields as FieldSet;
                 const pId = Array.isArray(fields.productId) ? fields.productId[0] : (fields.productId as string);
-                return pId === productId;
+                return pId === productId.toString();
             });
-
-            console.log("Records matching productId:", records.length);
 
             // 3. Map services and link to warranty info if available
             const result = records
@@ -420,12 +406,78 @@ export const dataProvider = {
         }
     },
 
+    async getAllServices(options: { query?: string; type?: string; page?: number; pageSize?: number } = {}) {
+        const { query = "", type = "all", page = 1, pageSize = 20 } = options;
+        
+        if (isAirtable) {
+            const { getCachedData } = await import('./cache');
+            const cached = await getCachedData();
+            
+            let filtered = cached.services.map(r => {
+                const fields = r.fields as FieldSet;
+                const pId = Array.isArray(fields.productId) ? fields.productId[0] : (fields.productId as string);
+                const product = cached.products.find(p => p.id === pId);
+                const pFields = product?.fields as FieldSet;
+                const cId = pFields ? (Array.isArray(pFields.companyId) ? pFields.companyId[0] : (pFields.companyId as string)) : null;
+                const company = cached.companies.find(c => c.id === cId);
+
+                return {
+                    id: r.id,
+                    orderCase: (fields.orderCase || fields.order_case || "") as string,
+                    type: fields.type as string,
+                    status: fields.status as string,
+                    entryTime: (fields.entryTime || fields.entry_time) as string,
+                    exitTime: (fields.exitTime || fields.exit_time) as string,
+                    productName: (pFields?.name as string) || "Unknown Product",
+                    companyName: (company?.fields.name as string) || "Unknown Company",
+                    techService: (fields.techservice || fields.tech_service || fields.techService || "") as string,
+                };
+            });
+
+            // Filtering
+            if (type !== "all") {
+                filtered = filtered.filter(s => s.type === type);
+            }
+
+            if (query) {
+                const q = query.toLowerCase();
+                filtered = filtered.filter(s => 
+                    String(s.orderCase).toLowerCase().includes(q) ||
+                    String(s.productName).toLowerCase().includes(q) ||
+                    String(s.companyName).toLowerCase().includes(q) ||
+                    String(s.techService).toLowerCase().includes(q)
+                );
+            }
+
+            // Sorting (newest first)
+            filtered.sort((a, b) => {
+                const dateA = a.entryTime ? new Date(a.entryTime).getTime() : 0;
+                const dateB = b.entryTime ? new Date(b.entryTime).getTime() : 0;
+                return dateB - dateA;
+            });
+
+            // Pagination
+            const total = filtered.length;
+            const start = (page - 1) * pageSize;
+            const data = filtered.slice(start, start + pageSize);
+
+            return { data, total };
+        } else {
+            // MSSQL implementation (simplified for now)
+            return { data: [], total: 0 };
+        }
+    },
+
     async getServiceDetail(id: string | number) {
         console.log(`Fetching service detail for ID: ${id}`);
         if (isAirtable) {
             try {
-                console.log(`Querying Airtable for service: ${id}`);
-                const serviceRecord = await airtableBase(TABLES.SERVICES).find(id.toString());
+                const { getCachedData } = await import('./cache');
+                const cached = await getCachedData();
+                
+                const serviceRecord = cached.services.find(s => s.id === id.toString());
+                if (!serviceRecord) return null;
+                
                 const sFields = serviceRecord.fields as FieldSet;
                 const wId = Array.isArray(sFields.warrantyId) ? sFields.warrantyId[0] : (sFields.warrantyId as string);
                 const pId = Array.isArray(sFields.productId) ? sFields.productId[0] : (sFields.productId as string);
@@ -481,6 +533,8 @@ export const dataProvider = {
         if (isAirtable) {
             const cleaned = cleanDataForAirtable(data as unknown as Record<string, unknown>);
             const record = await airtableBase(TABLES.COMPANIES).create(cleaned) as unknown as { id: string, fields: FieldSet };
+            const { addToCache } = await import('./cache');
+            addToCache('companies', { id: record.id, fields: record.fields });
             return { id: record.id, ...record.fields } as unknown as Company;
         } else {
             const values = {
@@ -498,6 +552,8 @@ export const dataProvider = {
             const cleaned = cleanDataForAirtable(data as unknown as Record<string, unknown>);
             delete (cleaned as Record<string, unknown>).id; 
             const record = await airtableBase(TABLES.COMPANIES).update(id.toString(), cleaned) as unknown as { id: string, fields: FieldSet };
+            const { updateInCache } = await import('./cache');
+            updateInCache('companies', record.id, record.fields);
             return { id: record.id, ...record.fields } as unknown as Company;
         } else {
             await mssqlDb.update(companies).set({
@@ -512,6 +568,8 @@ export const dataProvider = {
         if (isAirtable) {
             const cleaned = cleanDataForAirtable(data as unknown as Record<string, unknown>);
             const record = await airtableBase(TABLES.PRODUCTS).create(cleaned) as unknown as { id: string, fields: FieldSet };
+            const { addToCache } = await import('./cache');
+            addToCache('products', { id: record.id, fields: record.fields });
             return { id: record.id, ...record.fields } as unknown as Product;
         } else {
             const values = {
@@ -531,6 +589,14 @@ export const dataProvider = {
         if (isAirtable) {
             const cleaned = cleanDataForAirtable(data as unknown as Record<string, unknown>);
             const record = await airtableBase(TABLES.WARRANTIES).create(cleaned) as unknown as { id: string, fields: FieldSet };
+            const { addToCache, invalidateCache } = await import('./cache');
+            addToCache('warranties', { id: record.id, fields: record.fields });
+            
+            // Note: Since warranty affects latestWarrantyEndDate in Product (Airtable calculation), 
+            // we should technically invalidade the product cache or wait for background refresh.
+            // For now, let's just invalidate to be safe since this is a heavy calculation.
+            invalidateCache(); 
+            
             return { id: record.id, ...record.fields } as unknown as Warranty;
         } else {
             const values = {
@@ -549,15 +615,17 @@ export const dataProvider = {
 
     async getNextOrderNumber(prefix: 'PM' | 'CM' | 'S') {
         if (isAirtable) {
-            const records = await airtableBase(TABLES.SERVICES).select({
-                filterByFormula: `FIND('${prefix}_', {order_case})`,
-                sort: [{ field: 'order_case', direction: 'desc' }],
-                maxRecords: 1
-            }).firstPage();
-
-            if (records.length === 0) return `${prefix}_000001`;
+            const { getCachedData } = await import('./cache');
+            const cached = await getCachedData();
             
-            const lastCode = records[0].fields.order_case as string;
+            const relevantServices = cached.services
+                .filter(r => (r.fields.order_case as string || '').includes(prefix + '_'))
+                .sort((a, b) => ((b.fields.order_case as string) || '').localeCompare((a.fields.order_case as string) || ''))
+                .slice(0, 1);
+
+            if (relevantServices.length === 0) return `${prefix}_000001`;
+            
+            const lastCode = relevantServices[0].fields.order_case as string;
             if (!lastCode || !lastCode.startsWith(`${prefix}_`)) return `${prefix}_000001`;
             
             const numPart = lastCode.split("_")[1];
@@ -689,6 +757,8 @@ export const dataProvider = {
             console.log("Cleaned data:", JSON.stringify(cleaned, null, 2));
             try {
                 const record = await airtableBase(TABLES.SERVICES).create(cleaned) as unknown as { id: string; fields: FieldSet };
+                const { addToCache } = await import('./cache');
+                addToCache('services', { id: record.id, fields: record.fields });
                 result = { id: record.id, ...record.fields } as unknown as Service;
             } catch (error: unknown) {
                 console.error("Airtable Create Service Error:", error);
@@ -746,6 +816,9 @@ export const dataProvider = {
                 console.log(`Updating Airtable Service ${id} with:`, cleaned);
                 const record = await airtableBase(TABLES.SERVICES).update(id.toString(), cleaned) as unknown as { id: string; fields: FieldSet };
                 
+                const { updateInCache } = await import('./cache');
+                updateInCache('services', record.id, record.fields);
+
                 if (!orderCase) {
                     orderCase = (record.fields.order_case || record.fields.orderCase) as string | undefined; // Fallbacks
                 }
@@ -779,7 +852,10 @@ export const dataProvider = {
     async getWarrantyById(id: string | number) {
         if (isAirtable) {
             try {
-                const record = await airtableBase(TABLES.WARRANTIES).find(id.toString());
+                const { getCachedData } = await import('./cache');
+                const cached = await getCachedData();
+                const record = cached.warranties.find(w => w.id === id.toString());
+                if (!record) return null;
                 const fields = record.fields as FieldSet;
                 return {
                     id: record.id,
@@ -795,13 +871,13 @@ export const dataProvider = {
 
     async getExportData() {
         if (isAirtable) {
-            const productRecords = await airtableBase(TABLES.PRODUCTS).select().all();
-            const companyRecords = await airtableBase(TABLES.COMPANIES).select().all();
-            const warrantyRecords = await airtableBase(TABLES.WARRANTIES).select().all();
-            const serviceRecords = await airtableBase(TABLES.SERVICES).select({
-                filterByFormula: "{type} = 'PM'"
-            }).all();
-            // const userRecords = await airtableBase(TABLES.USERS).select().all();
+            const { getCachedData } = await import('./cache');
+            const cached = await getCachedData();
+            
+            const productRecords = cached.products;
+            const companyRecords = cached.companies;
+            const warrantyRecords = cached.warranties;
+            const serviceRecords = cached.services.filter(s => (s.fields as FieldSet).type === 'PM');
 
             return productRecords.map(r => {
                 const fields = r.fields as FieldSet;
@@ -918,6 +994,181 @@ export const dataProvider = {
                     companyName: r.company.name
                 };
             });
+        }
+    },
+
+    // === DASHBOARD STATS ===
+    async getDashboardStats() {
+        if (isAirtable) {
+            const { getCachedData } = await import('./cache');
+            const cachedData = await getCachedData();
+            
+            const productRecords = cachedData.products;
+            const companyRecords = cachedData.companies;
+            const warrantyRecords = cachedData.warranties;
+            const serviceRecords = cachedData.services;
+
+            const now = new Date();
+            const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+            const sixtyDaysFromNow = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
+
+            // Calculate warranty statistics
+            let activeCount = 0;
+            let nearExpiryCount = 0;
+            let expiredCount = 0;
+            let noWarrantyCount = 0;
+
+            interface ExpiringProduct {
+                id: string;
+                name: string;
+                serialNumber: string;
+                companyName: string;
+                endDate: Date;
+                daysRemaining: number;
+            }
+
+            const expiringWithin30Days: ExpiringProduct[] = [];
+            const expiringWithin60Days: ExpiringProduct[] = [];
+
+            productRecords.forEach(r => {
+                const fields = r.fields as FieldSet;
+                const status = fields.warrantyStatus as string;
+                const isNearExpiry = Boolean(fields.isNearExpiry);
+                const endDateStr = fields.latestWarrantyEndDate as string;
+
+                if (!endDateStr || status === '⚠️ No Warranty') {
+                    noWarrantyCount++;
+                } else if (status === '❌ Expired') {
+                    expiredCount++;
+                } else if (isNearExpiry) {
+                    nearExpiryCount++;
+                } else {
+                    activeCount++;
+                }
+
+                // Check for upcoming expirations
+                if (endDateStr) {
+                    const endDate = new Date(endDateStr);
+                    if (endDate > now && endDate <= sixtyDaysFromNow) {
+                        const companyId = Array.isArray(fields.companyId) ? fields.companyId[0] : (fields.companyId as string);
+                        const company = companyRecords.find(c => c.id === companyId);
+                        const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+                        
+                        const item: ExpiringProduct = {
+                            id: r.id,
+                            name: fields.name as string,
+                            serialNumber: fields.serialNumber as string,
+                            companyName: company ? (company.fields.name as string) : 'Unknown',
+                            endDate,
+                            daysRemaining
+                        };
+
+                        if (endDate <= thirtyDaysFromNow) {
+                            expiringWithin30Days.push(item);
+                        } else {
+                            expiringWithin60Days.push(item);
+                        }
+                    }
+                }
+            });
+
+            // Sort by days remaining
+            expiringWithin30Days.sort((a, b) => a.daysRemaining - b.daysRemaining);
+            expiringWithin60Days.sort((a, b) => a.daysRemaining - b.daysRemaining);
+
+            // Monthly service data for chart (last 6 months)
+            const monthlyServiceData: { month: string; PM: number; CM: number; SERVICE: number }[] = [];
+            for (let i = 5; i >= 0; i--) {
+                const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const monthName = date.toLocaleDateString('th-TH', { month: 'short', year: '2-digit' });
+                monthlyServiceData.push({ month: monthName, PM: 0, CM: 0, SERVICE: 0 });
+            }
+
+            serviceRecords.forEach(r => {
+                const fields = r.fields as FieldSet;
+                const entryTime = fields.entryTime as string;
+                const serviceType = fields.type as string;
+                
+                if (entryTime) {
+                    const serviceDate = new Date(entryTime);
+                    const monthDiff = (now.getFullYear() - serviceDate.getFullYear()) * 12 + (now.getMonth() - serviceDate.getMonth());
+                    
+                    if (monthDiff >= 0 && monthDiff < 6) {
+                        const index = 5 - monthDiff;
+                        if (monthlyServiceData[index]) {
+                            if (serviceType === 'PM') monthlyServiceData[index].PM++;
+                            else if (serviceType === 'CM') monthlyServiceData[index].CM++;
+                            else if (serviceType === 'SERVICE') monthlyServiceData[index].SERVICE++;
+                        }
+                    }
+                }
+            });
+
+            // Recent services
+            const recentServices = serviceRecords
+                .map(r => ({
+                    id: r.id,
+                    orderCase: (r.fields.order_case || r.fields.orderCase) as string,
+                    type: r.fields.type as string,
+                    status: r.fields.status as string,
+                    entryTime: r.fields.entryTime as string
+                }))
+                .filter(s => s.entryTime)
+                .sort((a, b) => new Date(b.entryTime).getTime() - new Date(a.entryTime).getTime())
+                .slice(0, 10);
+
+            return {
+                totalProducts: productRecords.length,
+                totalCompanies: companyRecords.length,
+                totalWarranties: warrantyRecords.length,
+                totalServices: serviceRecords.length,
+                warrantyStats: {
+                    active: activeCount,
+                    nearExpiry: nearExpiryCount,
+                    expired: expiredCount,
+                    noWarranty: noWarrantyCount
+                },
+                expiringWithin30Days: expiringWithin30Days.slice(0, 10),
+                expiringWithin60Days: expiringWithin60Days.slice(0, 10),
+                monthlyServiceData,
+                recentServices
+            };
+        } else {
+            // MSSQL implementation
+            const [productCount] = await mssqlDb.select({ count: sql<number>`COUNT(*)` }).from(products);
+            const [companyCount] = await mssqlDb.select({ count: sql<number>`COUNT(*)` }).from(companies);
+            const [warrantyCount] = await mssqlDb.select({ count: sql<number>`COUNT(*)` }).from(warranties);
+            const [serviceCount] = await mssqlDb.select({ count: sql<number>`COUNT(*)` }).from(services);
+
+            const now = new Date();
+            const allWarranties = await mssqlDb.select().from(warranties);
+            
+            let activeCount = 0, nearExpiryCount = 0, expiredCount = 0;
+            allWarranties.forEach(w => {
+                if (w.endDate < now) expiredCount++;
+                else {
+                    const daysRemaining = Math.ceil((w.endDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+                    if (daysRemaining <= 30) nearExpiryCount++;
+                    else activeCount++;
+                }
+            });
+
+            return {
+                totalProducts: productCount?.count || 0,
+                totalCompanies: companyCount?.count || 0,
+                totalWarranties: warrantyCount?.count || 0,
+                totalServices: serviceCount?.count || 0,
+                warrantyStats: {
+                    active: activeCount,
+                    nearExpiry: nearExpiryCount,
+                    expired: expiredCount,
+                    noWarranty: 0
+                },
+                expiringWithin30Days: [],
+                expiringWithin60Days: [],
+                monthlyServiceData: [],
+                recentServices: []
+            };
         }
     }
 };

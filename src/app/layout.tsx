@@ -12,6 +12,7 @@ export const metadata: Metadata = {
 
 import { LoadingProvider } from "@/context/LoadingContext";
 import { DataProvider } from "@/context/DataContext";
+import { AutoSync } from "@/components/AutoSync";
 
 export default function RootLayout({
   children,
@@ -23,10 +24,9 @@ export default function RootLayout({
       <body className={`${inter.className} min-h-screen bg-slate-50/30`}>
         <LoadingProvider>
           <DataProvider>
+            <AutoSync />
             <Navbar />
-            <main>
-              {children}
-            </main>
+            <main>{children}</main>
           </DataProvider>
         </LoadingProvider>
       </body>
