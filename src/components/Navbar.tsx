@@ -19,6 +19,12 @@ export async function Navbar() {
           {session && (
             <div className="hidden md:flex gap-4 text-lg font-medium">
               <Link
+                href="/dashboard"
+                className="hover:text-primary transition-colors font-bold text-blue-600"
+              >
+                แดชบอร์ด
+              </Link>
+              <Link
                 href="/customers"
                 className="hover:text-primary transition-colors"
               >
@@ -30,7 +36,18 @@ export async function Navbar() {
               >
                 รายชื่อสินค้า
               </Link>
-              {/* <Link href="/import" className="hover:text-primary transition-colors">Import</Link> */}
+              <Link
+                href="/services"
+                className="hover:text-primary transition-colors"
+              >
+                ประวัติบริการ
+              </Link>
+              <Link
+                href="/calendar"
+                className="hover:text-primary transition-colors"
+              >
+                ปฏิทินงาน
+              </Link>
             </div>
           )}
         </div>

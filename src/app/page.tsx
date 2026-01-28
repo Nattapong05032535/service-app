@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Building2, ShieldCheck, ClipboardCheck } from "lucide-react";
 
 export default async function LandingPage() {
-  redirect("/customers");
+  redirect("/dashboard");
 
   // The rest of the code will be unreachable but kept for reference
   const session = await getSession();
-  if (session) redirect("/customers");
+  if (session) redirect("/dashboard");
 
   return (
     <div className="relative isolate overflow-hidden">
