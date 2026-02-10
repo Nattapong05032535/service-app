@@ -476,6 +476,103 @@ export const dataProvider = {
         }
     },
 
+    async findServiceByOrderCase(orderCase: string) {
+        console.log(`Searching service by Order Case: ${orderCase}`);
+        if (isAirtable) {
+            try {
+                const records = await airtableBase(TABLES.SERVICES).select({
+                    filterByFormula: `{order_case} = '${orderCase}'`
+                }).all();
+
+                if (records.length === 0) return [];
+
+                const results: ServiceDetail[] = [];
+                
+                // Cache for efficient lookups
+                const productCache = new Map<string, Product | null>();
+                const companyCache = new Map<string, Company | null>();
+                const warrantyCache = new Map<string, Warranty | null>();
+
+                for (const serviceRecord of records) {
+                    const sFields = serviceRecord.fields as FieldSet;
+                    
+                    const wId = Array.isArray(sFields.warrantyId) ? sFields.warrantyId[0] : (sFields.warrantyId as string);
+                    const pId = Array.isArray(sFields.productId) ? sFields.productId[0] : (sFields.productId as string);
+
+                    const service = { 
+                        ...sFields, 
+                        id: serviceRecord.id, 
+                        productId: pId,
+                        orderCase: (sFields.orderCase || sFields.order_case) as string,
+                        techService: (sFields.techservice || sFields.tech_service || sFields.techService) as string,
+                        entryTime: (sFields.entryTime || sFields.entry_time) as string,
+                        exitTime: (sFields.exitTime || sFields.exit_time) as string,
+                        warrantyId: wId
+                    } as unknown as Service;
+                    
+                    let warranty = null;
+                    if (wId) {
+                        if (!warrantyCache.has(wId)) {
+                             warrantyCache.set(wId, await this.getWarrantyById(wId));
+                        }
+                        warranty = warrantyCache.get(wId);
+                    }
+                    
+                    let product = null;
+                    if (pId) {
+                        if (!productCache.has(pId)) {
+                            productCache.set(pId, await this.getProductById(pId));
+                        }
+                        product = productCache.get(pId);
+                    } else if (warranty) {
+                        const wpId = warranty.productId as unknown as string;
+                        if (!productCache.has(wpId)) {
+                             productCache.set(wpId, await this.getProductById(wpId));
+                        }
+                        product = productCache.get(wpId);
+                    }
+                    
+                    if (!product) {
+                        results.push({ service, warranty: null, product: null, company: null } as unknown as ServiceDetail);
+                        continue;
+                    }
+
+                    let company = null;
+                    const cId = product.companyId as unknown as string;
+                    if (cId) {
+                         if (!companyCache.has(cId)) {
+                             companyCache.set(cId, await this.getCompanyById(cId));
+                         }
+                         company = companyCache.get(cId);
+                    }
+
+                    results.push({ service, warranty, product, company } as unknown as ServiceDetail);
+                }
+                
+                return results;
+
+            } catch (error) {
+                console.error("Error searching by order case:", error);
+                return [];
+            }
+        } else {
+            console.log(`Querying MSSQL for order case: ${orderCase}`);
+            const results = await mssqlDb.select({
+                service: services,
+                warranty: warranties,
+                product: products,
+                company: companies
+            })
+            .from(services)
+            .leftJoin(warranties, eq(services.warrantyId, warranties.id))
+            .leftJoin(products, eq(services.productId, products.id))
+            .leftJoin(companies, eq(products.companyId, companies.id))
+            .where(eq(services.orderCase, orderCase));
+            
+            return results || [];
+        }
+    },
+
     // === CREATIONS ===
     async createCompany(data: CompanyInput) {
         if (isAirtable) {
@@ -547,7 +644,7 @@ export const dataProvider = {
         }
     },
 
-    async getNextOrderNumber(prefix: 'PM' | 'CM' | 'S') {
+    async getNextOrderNumber(prefix: 'PM' | 'CM' | 'S' | 'IN' | 'OUT') {
         if (isAirtable) {
             const records = await airtableBase(TABLES.SERVICES).select({
                 filterByFormula: `FIND('${prefix}_', {order_case})`,
@@ -653,8 +750,13 @@ export const dataProvider = {
         const input = serviceData as Record<string, unknown>;
         let order_case = (input.orderCase || input.order_case) as string | undefined;
         
-        if (!order_case && (data.type === 'PM' || data.type === 'CM' || data.type === 'SERVICE')) {
-            const prefix = data.type === 'SERVICE' ? 'S' : data.type as 'PM' | 'CM';
+        if (!order_case && (data.type === 'PM' || data.type === 'CM' || data.type === 'SERVICE' || data.type === 'IN_REPAIR' || data.type === 'OUT_REPAIR')) {
+            let prefix: 'PM' | 'CM' | 'S' | 'IN' | 'OUT' = 'PM'; // Default
+            if (data.type === 'SERVICE') prefix = 'S';
+            else if (data.type === 'IN_REPAIR') prefix = 'IN';
+            else if (data.type === 'OUT_REPAIR') prefix = 'OUT';
+            else prefix = data.type as 'PM' | 'CM';
+            
             order_case = await this.getNextOrderNumber(prefix);
         }
 

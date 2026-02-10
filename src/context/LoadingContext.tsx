@@ -32,17 +32,21 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     const withLoading = useCallback(async <T,>(fn: () => Promise<T>): Promise<T> => {
+        console.log("LoadingContext: withLoading started");
         setIsLoadingState(true);
         const startTime = Date.now();
         try {
             const result = await fn();
             // Ensure at least 500ms of loading time for a smoother experience
             const elapsedTime = Date.now() - startTime;
+            console.log("LoadingContext: elapsed time", elapsedTime);
             if (elapsedTime < 500) {
+                console.log("LoadingContext: waiting for delay", 500 - elapsedTime);
                 await new Promise(resolve => setTimeout(resolve, 500 - elapsedTime));
             }
             return result;
         } finally {
+            console.log("LoadingContext: withLoading finished");
             setIsLoadingState(false);
         }
     }, []);

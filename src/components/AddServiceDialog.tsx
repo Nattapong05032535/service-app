@@ -73,6 +73,8 @@ export function AddServiceDialog({ productId, warrantyId }: { productId: string,
                                 >
                                     <option value="PM">PM (การซ่อมบำรุงเชิงป้องกัน)</option>
                                     <option value="CM">CM (การซ่อมบำรุงเชิงแก้ไข)</option>
+                                    <option value="IN_REPAIR">IN_REPAIR (ซ่อมใน)</option>
+                                    <option value="OUT_REPAIR">OUT_REPAIR (ซ่อมนอก)</option>
                                     <option value="SERVICE">SERVICE (บริการอื่นๆ)</option>
                                 </select>
                             </div>

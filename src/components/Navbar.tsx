@@ -30,6 +30,12 @@ export async function Navbar() {
               >
                 รายชื่อสินค้า
               </Link>
+              <Link
+                href="/search"
+                className="hover:text-primary transition-colors"
+              >
+                ค้นหาใบงาน
+              </Link>
               {/* <Link href="/import" className="hover:text-primary transition-colors">Import</Link> */}
             </div>
           )}

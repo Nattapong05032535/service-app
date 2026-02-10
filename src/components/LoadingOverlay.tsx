@@ -13,7 +13,12 @@ export function LoadingOverlay() {
         () => false
     );
 
-    if (!isMounted) return null;
+    if (!isMounted) {
+        console.log("LoadingOverlay: not mounted");
+        return null;
+    }
+    
+    console.log("LoadingOverlay: rendering");
 
     return createPortal(
         <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-900/60 backdrop-blur-md transition-all animate-in fade-in duration-300">

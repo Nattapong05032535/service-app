@@ -69,6 +69,7 @@ export function EditServiceDialog({ service, warrantyId, trigger }: EditServiceD
     };
 
     async function handleSubmit(formData: FormData) {
+        console.log("EditServiceDialog: handleSubmit started");
         // If hasParts is false, we send an empty array
         const finalParts = hasParts ? parts : [];
         formData.set("partsjson", JSON.stringify(finalParts));
@@ -117,9 +118,13 @@ export function EditServiceDialog({ service, warrantyId, trigger }: EditServiceD
                             </button>
                         </div>
 
-                        <form action={handleSubmit} className="space-y-6 overflow-y-auto pr-2 custom-scrollbar">
+                        <form onSubmit={(e) => {
+                            e.preventDefault();
+                            const formData = new FormData(e.currentTarget);
+                            handleSubmit(formData);
+                        }} className="space-y-6 overflow-y-auto pr-2 custom-scrollbar">
                             <input type="hidden" name="id" value={service.id} />
-                            {(service as any).productId && <input type="hidden" name="productId" value={(service as any).productId} />}
+                            {service.productId && <input type="hidden" name="productId" value={service.productId} />}
                             {warrantyId && warrantyId !== "undefined" && <input type="hidden" name="warrantyId" value={warrantyId} />}
                             <input type="hidden" name="partsjson" value={JSON.stringify(hasParts ? parts : [])} />
 

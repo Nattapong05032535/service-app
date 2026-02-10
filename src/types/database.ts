@@ -32,9 +32,9 @@ export interface ServiceWithWarranty {
 
 export interface ServiceDetail {
     service: Service;
-    warranty: Warranty;
-    product: Product;
-    company: Company;
+    warranty: Warranty | null;
+    product: Product | null;
+    company: Company | null;
 }
 
 // Input types that allow strings for dates and numbers/strings for IDs
