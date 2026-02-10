@@ -185,24 +185,66 @@ export default async function ServicePrintPage({ params }: { params: Promise<{ i
                 </div>
 
                 {/* Section: Signatures */}
-                <div className="grid grid-cols-2 gap-12 mt-6 uppercase tracking-tighter">
-                    <div className="text-center space-y-2">
-                        <div className="border-b border-black w-full h-12"></div>
-                        <div className="leading-tight">
-                            <p className="text-xs font-bold text-black">ลงชื่อช่างผู้ปฏิบัติงาน</p>
-                            <p className="text-[9px] text-black mt-1">(........................................................)</p>
-                            <p className="text-[9px] text-black mt-0.5">วันที่: ......../......../........</p>
+                {/* Section: Signatures */}
+                {service.type === 'IN_REPAIR' ? (
+                     <div className="grid grid-cols-2 gap-x-12 gap-y-6 mt-6 uppercase tracking-tighter text-black">
+                        {/* 1. ผู้รับเข้า */}
+                        <div className="text-center space-y-1">
+                            <div className="border-b border-black w-full h-8"></div>
+                            <div className="leading-tight">
+                                <p className="text-[10px] font-bold">1. ผู้รับเข้าซ่อม</p>
+                                <p className="text-[9px] mt-0.5">(........................................................)</p>
+                                <p className="text-[9px] mt-0.5">วันที่: ......../......../........</p>
+                            </div>
+                        </div>
+                        {/* 2. ผู้ส่งมอบให้ */}
+                        <div className="text-center space-y-1">
+                            <div className="border-b border-black w-full h-8"></div>
+                            <div className="leading-tight">
+                                <p className="text-[10px] font-bold">2. ผู้ส่งมอบให้</p>
+                                <p className="text-[9px] mt-0.5">(........................................................)</p>
+                                <p className="text-[9px] mt-0.5">วันที่: ......../......../........</p>
+                            </div>
+                        </div>
+                         {/* 3. ผู้ส่งมอบกลับ */}
+                         <div className="text-center space-y-1">
+                            <div className="border-b border-black w-full h-8"></div>
+                            <div className="leading-tight">
+                                <p className="text-[10px] font-bold">3. ผู้ส่งมอบกลับ</p>
+                                <p className="text-[9px] mt-0.5">(........................................................)</p>
+                                <p className="text-[9px] mt-0.5">วันที่: ......../......../........</p>
+                            </div>
+                        </div>
+                         {/* 4. ผู้รับกลับ */}
+                         <div className="text-center space-y-1">
+                            <div className="border-b border-black w-full h-8"></div>
+                            <div className="leading-tight">
+                                <p className="text-[10px] font-bold">4. ผู้รับสินค้ากลับ</p>
+                                <p className="text-[9px] mt-0.5">(........................................................)</p>
+                                <p className="text-[9px] mt-0.5">วันที่: ......../......../........</p>
+                            </div>
                         </div>
                     </div>
-                    <div className="text-center space-y-2">
-                        <div className="border-b border-black w-full h-12"></div>
-                        <div className="leading-tight">
-                            <p className="text-xs font-bold text-black">ลงชื่อลูกค้า / ผู้รับงาน</p>
-                            <p className="text-[9px] text-black mt-1">(........................................................)</p>
-                            <p className="text-[9px] text-black mt-0.5">วันที่: ......../......../........</p>
+                ) : (
+                    <div className="grid grid-cols-2 gap-12 mt-6 uppercase tracking-tighter text-black">
+                        <div className="text-center space-y-2">
+                            <div className="border-b border-black w-full h-12"></div>
+                            <div className="leading-tight">
+                                <p className="text-xs font-bold">ลงชื่อช่างผู้ปฏิบัติงาน</p>
+                                <p className="text-[9px] mt-1">(........................................................)</p>
+                                <p className="text-[9px] mt-0.5">วันที่: ......../......../........</p>
+                            </div>
+                        </div>
+                        <div className="text-center space-y-2">
+                            <div className="border-b border-black w-full h-12"></div>
+                            <div className="leading-tight">
+                                <p className="text-xs font-bold">ลงชื่อลูกค้า / ผู้รับงาน</p>
+                                <p className="text-[9px] mt-1">(........................................................)</p>
+                                <p className="text-[9px] mt-0.5">วันที่: ......../......../........</p>
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
             </div>
         </div>
     );

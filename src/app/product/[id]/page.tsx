@@ -6,7 +6,7 @@ import { Package, ShieldCheck, ClipboardList, Calendar, ArrowLeft, Clock, Histor
 import Link from "next/link";
 import { cn, formatDate, formatDateTime } from "@/lib/utils";
 import { AddWarrantyDialog } from "@/components/AddWarrantyDialog";
-import { AddServiceDialog } from "@/components/AddServiceDialog";
+import AddServiceDialog from "@/components/AddServiceDialog";
 import { EditServiceDialog } from "@/components/EditServiceDialog";
 import { PrintWarrantyButton } from "@/components/PrintWarrantyButton";
 import { Product, Company, Warranty, ServiceWithWarranty } from "@/types/database";

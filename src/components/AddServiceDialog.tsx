@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { createService } from "@/app/actions/business";
 import { useLoading } from "@/context/LoadingContext";
 
-export function AddServiceDialog({ productId, warrantyId }: { productId: string, warrantyId?: string }) {
+export default function AddServiceDialog({ productId, warrantyId }: { productId: string, warrantyId?: string }) {
     const [isOpen, setIsOpen] = useState(false);
     const { withLoading } = useLoading();
 
