@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { Hammer, Clock, User, Calendar, Building2, Package, ShieldCheck } from "lucide-react";
 import { PrintServiceButton } from "@/components/PrintServiceButton";
 
+import { formatDate, formatDateTime } from "@/lib/utils";
+
 export default async function ServicePrintPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
     const detail = await dataProvider.getServiceDetail(id);
@@ -60,7 +62,7 @@ export default async function ServicePrintPage({ params }: { params: Promise<{ i
                             <p className="text-[9px] font-bold text-black uppercase tracking-wider leading-none mb-0.5">Order No.</p>
                             <p className="text-base font-mono font-bold text-black leading-none">#{service.orderCase || "-"}</p>
                         </div>
-                        <p className="text-[10px] text-black">วันที่: {new Date(service.entryTime).toLocaleDateString('th-TH')}</p>
+                        <p className="text-[10px] text-black">วันที่: {formatDate(service.entryTime)}</p>
                     </div>
                 </div>
 
@@ -94,7 +96,7 @@ export default async function ServicePrintPage({ params }: { params: Promise<{ i
                             </div>
                             <div className="flex items-center gap-2 pl-5">
                                 <Calendar className="w-3 h-3 text-black" />
-                                <p className="text-[10px] text-black truncate">ซื้อเมื่อ: {product?.purchaseDate ? new Date(product.purchaseDate).toLocaleDateString('th-TH') : "-"}</p>
+                                <p className="text-[10px] text-black truncate">ซื้อเมื่อ: {formatDate(product?.purchaseDate)}</p>
                             </div>
                             <div className="flex items-center gap-2 pl-5">
                                 <ShieldCheck className="w-3 h-3 text-black" />
@@ -114,8 +116,8 @@ export default async function ServicePrintPage({ params }: { params: Promise<{ i
                             <div className="flex items-center gap-2 text-black"><User className="w-3 h-3" /> ชื่อช่างผู้ดูแล</div>
                         </div>
                         <div className="grid grid-cols-3 px-3 py-1.5 text-[10px] border-b border-black">
-                            <div>{new Date(service.entryTime).toLocaleString('th-TH')}</div>
-                            <div>{service.exitTime ? new Date(service.exitTime).toLocaleString('th-TH') : "ยังไม่ระบุ"}</div>
+                            <div>{formatDateTime(service.entryTime)}</div>
+                            <div>{service.exitTime ? formatDateTime(service.exitTime) : "ยังไม่ระบุ"}</div>
                             <div className="font-bold">{service.technician || "-"}</div>
                         </div>
                         <div className="px-3 py-2 border-b border-black">

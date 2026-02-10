@@ -1,5 +1,6 @@
 import { dataProvider } from "@/db/provider";
 import { ServiceDetail } from "@/types/database";
+import { formatDateTime } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -120,9 +121,9 @@ export default async function SearchPage({
                         <div>
                           <p className="text-sm text-slate-500">เวลาเข้า - ออก</p>
                           <p className="font-medium">
-                            {result.service.entryTime ? new Date(result.service.entryTime).toLocaleString('th-TH') : '-'} 
+                            {result.service.entryTime ? formatDateTime(result.service.entryTime) : '-'} 
                             <span className="mx-2 text-slate-400">ถึง</span> 
-                            {result.service.exitTime ? new Date(result.service.exitTime).toLocaleString('th-TH') : '-'}
+                            {result.service.exitTime ? formatDateTime(result.service.exitTime) : '-'}
                           </p>
                         </div>
                       </div>

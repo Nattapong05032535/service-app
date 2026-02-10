@@ -16,7 +16,7 @@ import {
   ShieldAlert,
   ShieldX,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { ProductWithLatestWarranty } from "@/types/database";
 
 export default async function ProductsPage({
@@ -209,13 +209,7 @@ export default async function ProductsPage({
                             <span className="flex items-center gap-1">
                               <Calendar className="w-3.5 h-3.5" />
                               หมดเขต:{" "}
-                              {new Date(
-                                product.latestWarranty.endDate,
-                              ).toLocaleDateString("th-TH", {
-                                day: "2-digit",
-                                month: "short",
-                                year: "numeric",
-                              })}
+                              {formatDate(product.latestWarranty.endDate)}
                             </span>
                           )}
                         </div>

@@ -14,6 +14,7 @@ import {
     CompanyInput, ProductInput, WarrantyInput, ServiceInput
 } from "@/types/database";
 import { FieldSet } from "airtable";
+import { formatDate } from "@/lib/utils";
 
 const isAirtable = process.env.DB_TYPE === 'airtable';
 
@@ -942,11 +943,12 @@ export const dataProvider = {
                     const startDate = new Date((latestWarranty as { startDate?: string }).startDate || 0);
                     
                     warrantyStatus = endDate > now ? "Active" : "Expired";
-                    warrantyStartDate = startDate.toLocaleDateString('th-TH');
-                    warrantyEndDate = endDate.toLocaleDateString('th-TH');
+                    warrantyStartDate = formatDate(startDate);
+                    warrantyEndDate = formatDate(endDate);
 
                     const pmServices = serviceRecords.filter(s => {
                         const sFields = s.fields as FieldSet;
+                        // Handle array or string for warrantyId
                         const wId = Array.isArray(sFields.warrantyId) ? sFields.warrantyId[0] : sFields.warrantyId;
                         return wId === latestWarranty.id;
                     });
@@ -961,7 +963,7 @@ export const dataProvider = {
 
                 return {
                     productName: fields.name as string,
-                    purchaseDate: fields.purchaseDate ? new Date(fields.purchaseDate as string).toLocaleDateString('th-TH') : "-",
+                    purchaseDate: formatDate(fields.purchaseDate as string),
                     serialNumber: fields.serialNumber as string,
                     salesName: fields.contactPerson as string || "-",
                     warrantyStatus,
@@ -996,8 +998,8 @@ export const dataProvider = {
                 if (latestWarranty) {
                     const now = new Date();
                     warrantyStatus = latestWarranty.endDate > now ? "Active" : "Expired";
-                    warrantyStartDate = latestWarranty.startDate.toLocaleDateString('th-TH');
-                    warrantyEndDate = latestWarranty.endDate.toLocaleDateString('th-TH');
+                    warrantyStartDate = formatDate(latestWarranty.startDate);
+                    warrantyEndDate = formatDate(latestWarranty.endDate);
 
                     const pmServices = allServices.filter(s => s.warrantyId === latestWarranty.id);
                     if (pmServices.length > 0) {
@@ -1010,7 +1012,7 @@ export const dataProvider = {
 
                 return {
                     productName: r.product.name,
-                    purchaseDate: r.product.purchaseDate ? r.product.purchaseDate.toLocaleDateString('th-TH') : "-",
+                    purchaseDate: formatDate(r.product.purchaseDate),
                     serialNumber: r.product.serialNumber,
                     salesName: r.user?.username || "System",
                     warrantyStatus,

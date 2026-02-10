@@ -8,6 +8,7 @@ import { updateServiceAction, getServicePartsAction } from "@/app/actions/busine
 import { Service } from "@/types/database";
 
 import { useLoading } from "@/context/LoadingContext";
+import { formatDate } from "@/lib/utils";
 
 interface EditServiceDialogProps {
     service: Service;
@@ -107,7 +108,7 @@ export function EditServiceDialog({ service, warrantyId, trigger }: EditServiceD
                                 </div>
                                 <div>
                                     <h3 className="text-xl font-bold">ปรับแต่งข้อมูลงานบริการ / PM</h3>
-                                    <p className="text-sm text-muted-foreground">{service.type} {service.orderCase ? `(${service.orderCase})` : ""} - {new Date(service.entryTime).toLocaleDateString('th-TH')}</p>
+                                    <p className="text-sm text-muted-foreground">{service.type} {service.orderCase ? `(${service.orderCase})` : ""} - {formatDate(service.entryTime)}</p>
                                 </div>
                             </div>
                             <button

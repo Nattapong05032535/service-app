@@ -15,7 +15,7 @@ import {
   MapPin,
 } from "lucide-react";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { AddProductDialog } from "@/components/AddProductDialog";
 
 type Props = {
@@ -254,13 +254,9 @@ export default async function CompanyDetailPage(props: Props) {
                                 <span className="flex items-center gap-2 text-slate-500 font-medium">
                                   <Clock className="w-3 h-3 text-primary/60" />
                                   <span className="flex items-center gap-1">
-                                    {new Date(
-                                      activeW.startDate,
-                                    ).toLocaleDateString()}
+                                    {formatDate(activeW.startDate)}
                                     <span className="mx-1 opacity-50">ถึง</span>
-                                    {new Date(
-                                      activeW.endDate,
-                                    ).toLocaleDateString()}
+                                    {formatDate(activeW.endDate)}
                                   </span>
                                 </span>
                               )}
@@ -283,9 +279,7 @@ export default async function CompanyDetailPage(props: Props) {
                           >
                             <Calendar className="w-4 h-4 text-primary/40" />
                             {product.purchaseDate
-                              ? new Date(
-                                  product.purchaseDate,
-                                ).toLocaleDateString()
+                              ? formatDate(product.purchaseDate)
                               : "ไม่ได้ระบุ"}
                           </div>
                           <div

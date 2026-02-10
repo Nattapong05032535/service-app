@@ -4,7 +4,7 @@ import { redirect, notFound } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Package, ShieldCheck, ClipboardList, Calendar, ArrowLeft, Clock, History, CheckCircle2, User, Printer } from "lucide-react";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
+import { cn, formatDate, formatDateTime } from "@/lib/utils";
 import { AddWarrantyDialog } from "@/components/AddWarrantyDialog";
 import { AddServiceDialog } from "@/components/AddServiceDialog";
 import { EditServiceDialog } from "@/components/EditServiceDialog";
@@ -60,7 +60,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                     <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
                         <div className="p-3 rounded-lg bg-slate-50 border">
                             <p className="text-xs font-bold text-muted-foreground uppercase mb-1">วันที่ซื้อ</p>
-                            <p className="font-medium">{product.purchaseDate ? new Date(product.purchaseDate).toLocaleDateString() : "ไม่ได้ระบุ"}</p>
+                            <p className="font-medium">{formatDate(product.purchaseDate)}</p>
                         </div>
                         <div className="p-3 rounded-lg bg-slate-50 border">
                             <p className="text-xs font-bold text-muted-foreground uppercase mb-1">สาขา / สถานที่ติดตั้ง</p>
@@ -121,8 +121,8 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                                                             {w.type}
                                                         </div>
                                                     </td>
-                                                    <td className="px-6 py-4 text-slate-600">{wStart.toLocaleDateString('en-GB')}</td>
-                                                    <td className="px-6 py-4 text-slate-600">{wEnd.toLocaleDateString('en-GB')}</td>
+                                                    <td className="px-6 py-4 text-slate-600">{formatDate(wStart)}</td>
+                                                    <td className="px-6 py-4 text-slate-600">{formatDate(wEnd)}</td>
                                                     <td className="px-6 py-4 text-center">
                                                         <span className={cn(
                                                             "px-2 py-1 rounded-full text-[10px] font-bold uppercase",
@@ -251,14 +251,14 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                                                                 <span className="text-muted-foreground flex items-center gap-1.5">
                                                                     <Clock className="w-3.5 h-3.5 text-blue-500" /> {isFuture ? "วันนัดหมาย:" : "เวลาเข้า:"}
                                                                 </span>
-                                                                <span className="font-semibold">{new Date(service.entryTime).toLocaleString('th-TH')}</span>
+                                                                <span className="font-semibold">{formatDateTime(service.entryTime)}</span>
                                                             </div>
                                                             {service.exitTime && (
                                                                 <div className="flex items-center justify-between text-xs">
                                                                     <span className="text-muted-foreground flex items-center gap-1.5">
                                                                         <Clock className="w-3.5 h-3.5 text-red-400" /> เวลาออก:
                                                                     </span>
-                                                                    <span className="font-semibold">{new Date(service.exitTime).toLocaleString('th-TH')}</span>
+                                                                    <span className="font-semibold">{formatDateTime(service.exitTime)}</span>
                                                                 </div>
                                                             )}
                                                             <div className="mt-1 flex gap-2">
