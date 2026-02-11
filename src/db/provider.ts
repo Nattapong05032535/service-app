@@ -1029,16 +1029,20 @@ export const dataProvider = {
     async getDashboardStats() {
         if (isAirtable) {
             try {
-                // Fetch all data in parallel
-                const [companiesRecs, productsRecs, warrantiesRecs, servicesRecs] = await Promise.all([
-                    airtableBase(TABLES.COMPANIES).select({ fields: ['name'] }).all(),
-                    airtableBase(TABLES.PRODUCTS).select({ fields: ['name', 'serialNumber'] }).all(),
-                    airtableBase(TABLES.WARRANTIES).select({ fields: ['startDate', 'endDate', 'type', 'productId'] }).all(),
-                    airtableBase(TABLES.SERVICES).select({
-                        fields: ['type', 'status', 'entryTime', 'exitTime', 'description', 'technician', 'order_case', 'productId'],
-                        sort: [{ field: 'entryTime', direction: 'desc' }],
-                    }).all(),
-                ]);
+                // Fetch data sequentially to prevent Timeouts and Rate Limits
+                const companiesRecs = await airtableBase(TABLES.COMPANIES).select({ fields: ['name'] }).all();
+                const productsRecs = await airtableBase(TABLES.PRODUCTS).select({ fields: ['name', 'serialNumber'] }).all();
+                const warrantiesRecs = await airtableBase(TABLES.WARRANTIES).select({ fields: ['startDate', 'endDate', 'type', 'productId'] }).all();
+                
+                // Fetch Services (Ensure field names are correct)
+                const servicesRecs = await airtableBase(TABLES.SERVICES).select({
+                    fields: ['type', 'status', 'entryTime', 'exitTime', 'description', 'order_case', 'productId'],
+                    sort: [{ field: 'entryTime', direction: 'desc' }],
+                }).all();
+
+                const servicePartsRecs = await airtableBase(TABLES.SERVICE_PARTS).select({ fields: ['qty'] }).all();
+
+                const totalPartsUsed = servicePartsRecs.reduce((sum, p) => sum + ((p.fields.qty as number) || 0), 0);
 
                 const now = new Date();
                 const thirtyDaysLater = new Date();
@@ -1066,19 +1070,21 @@ export const dataProvider = {
                 let servicePending = 0;
                 let serviceCompleted = 0;
                 let serviceCancelled = 0;
-                let serviceCM = 0;
-                let servicePM = 0;
+                const serviceTypes: Record<string, number> = {};
 
                 for (const s of servicesRecs) {
                     const status = (s.fields.status as string) || '';
-                    const type = (s.fields.type as string) || '';
+                    const type = (s.fields.type as string) || 'Unknown';
 
+                    // Count Status
                     if (status === 'เสร็จสิ้น') serviceCompleted++;
                     else if (status === 'ยกเลิก') serviceCancelled++;
                     else servicePending++;
 
-                    if (type === 'CM') serviceCM++;
-                    else if (type === 'PM') servicePM++;
+                    // Count Types (Dynamic)
+                    if (type) {
+                        serviceTypes[type] = (serviceTypes[type] || 0) + 1;
+                    }
                 }
 
                 // Recent services (latest 10)
@@ -1098,13 +1104,13 @@ export const dataProvider = {
                     totalProducts: productsRecs.length,
                     totalWarranties: warrantiesRecs.length,
                     totalServices: servicesRecs.length,
+                    totalPartsUsed, 
                     warranty: { active: warrantyActive, expired: warrantyExpired, nearExpiry: warrantyNearExpiry },
                     service: {
                         pending: servicePending,
                         completed: serviceCompleted,
                         cancelled: serviceCancelled,
-                        cm: serviceCM,
-                        pm: servicePM,
+                        types: serviceTypes, // Return all types
                     },
                     recentServices,
                 };

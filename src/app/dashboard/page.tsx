@@ -16,6 +16,7 @@ import {
   XCircle,
   ArrowRight,
   Activity,
+  PenTool,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -42,8 +43,28 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   },
 };
 
+const SERVICE_TYPE_CONFIG: Record<
+  string,
+  { label: string; color: string; keys: string[] }
+> = {
+  CM: { label: "Corrective Maintenance", color: "bg-orange-400", keys: ["CM"] },
+  PM: { label: "Preventive Maintenance", color: "bg-blue-400", keys: ["PM"] },
+  IN: {
+    label: "Installation / Repair",
+    color: "bg-green-400",
+    keys: ["IN", "IN_REPAIR"],
+  },
+  OUT: { label: "Uninstallation", color: "bg-red-400", keys: ["OUT"] },
+  S: {
+    label: "Service / Survey",
+    color: "bg-purple-400",
+    keys: ["S", "SERVICE"],
+  },
+};
+
 export default async function DashboardPage() {
   const session = await getSession();
+
   if (!session) redirect("/login");
 
   if (!hasPermission(session.role, "dashboard", "read")) {
@@ -83,12 +104,12 @@ export default async function DashboardPage() {
       href: "/products",
     },
     {
-      title: "ใบรับประกัน",
-      value: stats.totalWarranties,
-      icon: ShieldCheck,
-      color: "text-emerald-600",
-      bgColor: "bg-emerald-50",
-      href: "/products",
+      title: "อะไหล่ทั้งหมดที่ใช้ไป",
+      value: stats.totalPartsUsed || 0,
+      icon: PenTool,
+      color: "text-orange-600",
+      bgColor: "bg-orange-50",
+      href: "/analysis",
     },
     {
       title: "ใบงาน Service",
@@ -96,7 +117,7 @@ export default async function DashboardPage() {
       icon: Wrench,
       color: "text-purple-600",
       bgColor: "bg-purple-50",
-      href: "/search",
+      href: "/services",
     },
   ];
 
@@ -148,6 +169,17 @@ export default async function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b">
+              <span className="text-sm font-medium text-muted-foreground">
+                ทั้งหมด
+              </span>
+              <span className="text-2xl font-bold">
+                {stats.totalWarranties.toLocaleString()}{" "}
+                <span className="text-sm font-normal text-muted-foreground">
+                  ใบ
+                </span>
+              </span>
+            </div>
             <StatRow
               icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />}
               label="ยังอยู่ในประกัน"
@@ -181,6 +213,17 @@ export default async function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b">
+              <span className="text-sm font-medium text-muted-foreground">
+                ทั้งหมด
+              </span>
+              <span className="text-2xl font-bold">
+                {stats.totalServices.toLocaleString()}{" "}
+                <span className="text-sm font-normal text-muted-foreground">
+                  ใบ
+                </span>
+              </span>
+            </div>
             <StatRow
               icon={<Clock className="w-4 h-4 text-amber-500" />}
               label="รอดำเนินการ"
@@ -202,26 +245,32 @@ export default async function DashboardPage() {
               total={stats.totalServices}
               barColor="bg-red-500"
             />
-            <div className="border-t pt-3 mt-3">
-              <div className="flex items-center gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-orange-400" />
-                  <span className="text-muted-foreground">
-                    CM:{" "}
-                    <strong className="text-foreground">
-                      {stats.service.cm}
-                    </strong>
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-blue-400" />
-                  <span className="text-muted-foreground">
-                    PM:{" "}
-                    <strong className="text-foreground">
-                      {stats.service.pm}
-                    </strong>
-                  </span>
-                </div>
+
+            <div className="border-t pt-4 mt-4">
+              <h4 className="text-sm font-semibold mb-3">แยกตามประเภทงาน</h4>
+              <div className="grid grid-cols-5 gap-3">
+                {Object.entries(SERVICE_TYPE_CONFIG).map(([key, config]) => {
+                  let count = 0;
+                  const typesData = stats.service.types || {};
+                  config.keys.forEach((k) => {
+                    count += typesData[k] || 0;
+                  });
+
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-center justify-between p-2 bg-muted/40 rounded-lg border-gray-300 border transition-colors "
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`w-2.5 h-2.5 rounded-full ${config.color}`}
+                        />
+                        <span className="font-semibold text-sm">{key}</span>
+                      </div>
+                      <span className="font-bold text-sm">{count}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </CardContent>
@@ -283,7 +332,8 @@ export default async function DashboardPage() {
                         <td className="py-3">
                           <Badge
                             className={
-                              svc.type === "CM"
+                              svc.type === "CM" ||
+                              svc.type === "Corrective Maintenance"
                                 ? "bg-orange-100 text-orange-700"
                                 : "bg-blue-100 text-blue-700"
                             }
