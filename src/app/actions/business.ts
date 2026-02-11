@@ -4,6 +4,7 @@ import { dataProvider } from "@/db/provider";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
+import { requirePermission } from "@/lib/permissions";
 import { Company, Product } from "@/types/database";
 
 export async function createOrUpdateCompany(formData: FormData): Promise<void> {
@@ -11,6 +12,7 @@ export async function createOrUpdateCompany(formData: FormData): Promise<void> {
     if (!session) redirect("/login");
 
     const id = formData.get("id") as string;
+    requirePermission(session.role, 'company', id ? 'update' : 'create');
     const name = formData.get("name") as string;
     const nameSecondary = formData.get("nameSecondary") as string;
     const taxId = formData.get("taxId") as string;
@@ -43,6 +45,10 @@ export async function createOrUpdateCompany(formData: FormData): Promise<void> {
 }
 
 export async function createProduct(formData: FormData): Promise<void> {
+    const session = await getSession();
+    if (!session) redirect("/login");
+    requirePermission(session.role, 'product', 'create');
+
     const companyId = formData.get("companyId") as string;
     const name = formData.get("name") as string;
     const serialNumber = formData.get("serialNumber") as string;
@@ -63,6 +69,10 @@ export async function createProduct(formData: FormData): Promise<void> {
 }
 
 export async function createWarranty(formData: FormData): Promise<void> {
+    const session = await getSession();
+    if (!session) redirect("/login");
+    requirePermission(session.role, 'warranty', 'create');
+
     const productId = formData.get("productId") as string;
     const startDateStr = formData.get("startDate") as string;
     const endDateStr = formData.get("endDate") as string;
@@ -126,6 +136,10 @@ export async function createWarranty(formData: FormData): Promise<void> {
 }
 
 export async function createService(formData: FormData): Promise<void> {
+    const session = await getSession();
+    if (!session) redirect("/login");
+    requirePermission(session.role, 'service', 'create');
+
     const productId = formData.get("productId") as string;
     const warrantyId = formData.get("warrantyId") as string;
     const type = formData.get("type") as string;
@@ -157,6 +171,10 @@ export async function createService(formData: FormData): Promise<void> {
 }
 
 export async function updateServiceAction(formData: FormData): Promise<void> {
+    const session = await getSession();
+    if (!session) redirect("/login");
+    requirePermission(session.role, 'service', 'update');
+
     const id = formData.get("id") as string;
     const productId = formData.get("productId") as string;
     const entryTime = formData.get("entryTime") as string;
@@ -213,6 +231,7 @@ export interface ImportRow {
 export async function importDataAction(rows: ImportRow[]) {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
+    requirePermission(session.role, 'import', 'execute');
 
     let successCount = 0;
 

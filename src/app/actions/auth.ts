@@ -4,6 +4,7 @@ import { dataProvider } from "@/db/provider";
 import bcrypt from "bcryptjs";
 import { setSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { DEFAULT_ROLE } from "@/config/permissions";
 
 export async function loginAction(formData: FormData): Promise<void> {
     const username = formData.get("username") as string;
@@ -25,7 +26,8 @@ export async function loginAction(formData: FormData): Promise<void> {
             redirect("/login?error=Invalid credentials");
         }
 
-        await setSession({ id: user.id.toString(), username: (user as { username: string }).username });
+        const role = (user as { role?: string }).role || DEFAULT_ROLE;
+        await setSession({ id: user.id.toString(), username: (user as { username: string }).username, role });
     } catch (e: unknown) {
         const error = e as Error;
         if (error.message?.includes("NEXT_REDIRECT")) throw e;
@@ -56,7 +58,7 @@ export async function registerAction(formData: FormData): Promise<void> {
             throw new Error("Failed to register user");
         }
 
-        await setSession({ id: user.id.toString(), username: (user as { username: string }).username });
+        await setSession({ id: user.id.toString(), username: (user as { username: string }).username, role: DEFAULT_ROLE });
     } catch (e: unknown) {
         const error = e as Error;
         if (error.message?.includes("NEXT_REDIRECT")) throw e;

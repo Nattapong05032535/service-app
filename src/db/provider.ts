@@ -1023,5 +1023,98 @@ export const dataProvider = {
                 };
             });
         }
-    }
+    },
+
+    // === DASHBOARD ===
+    async getDashboardStats() {
+        if (isAirtable) {
+            try {
+                // Fetch all data in parallel
+                const [companiesRecs, productsRecs, warrantiesRecs, servicesRecs] = await Promise.all([
+                    airtableBase(TABLES.COMPANIES).select({ fields: ['name'] }).all(),
+                    airtableBase(TABLES.PRODUCTS).select({ fields: ['name', 'serialNumber'] }).all(),
+                    airtableBase(TABLES.WARRANTIES).select({ fields: ['startDate', 'endDate', 'type', 'productId'] }).all(),
+                    airtableBase(TABLES.SERVICES).select({
+                        fields: ['type', 'status', 'entryTime', 'exitTime', 'description', 'technician', 'order_case', 'productId'],
+                        sort: [{ field: 'entryTime', direction: 'desc' }],
+                    }).all(),
+                ]);
+
+                const now = new Date();
+                const thirtyDaysLater = new Date();
+                thirtyDaysLater.setDate(now.getDate() + 30);
+
+                // Warranty stats
+                let warrantyActive = 0;
+                let warrantyExpired = 0;
+                let warrantyNearExpiry = 0;
+
+                for (const w of warrantiesRecs) {
+                    const endDate = w.fields.endDate ? new Date(w.fields.endDate as string) : null;
+                    if (!endDate) continue;
+
+                    if (endDate < now) {
+                        warrantyExpired++;
+                    } else if (endDate <= thirtyDaysLater) {
+                        warrantyNearExpiry++;
+                    } else {
+                        warrantyActive++;
+                    }
+                }
+
+                // Service stats
+                let servicePending = 0;
+                let serviceCompleted = 0;
+                let serviceCancelled = 0;
+                let serviceCM = 0;
+                let servicePM = 0;
+
+                for (const s of servicesRecs) {
+                    const status = (s.fields.status as string) || '';
+                    const type = (s.fields.type as string) || '';
+
+                    if (status === 'เสร็จสิ้น') serviceCompleted++;
+                    else if (status === 'ยกเลิก') serviceCancelled++;
+                    else servicePending++;
+
+                    if (type === 'CM') serviceCM++;
+                    else if (type === 'PM') servicePM++;
+                }
+
+                // Recent services (latest 10)
+                const recentServices = servicesRecs.slice(0, 10).map(s => ({
+                    id: s.id,
+                    type: (s.fields.type as string) || '',
+                    status: (s.fields.status as string) || 'รอดำเนินการ',
+                    entryTime: (s.fields.entryTime as string) || '',
+                    exitTime: (s.fields.exitTime as string) || '',
+                    description: (s.fields.description as string) || '',
+                    technician: (s.fields.technician as string) || '',
+                    orderCase: (s.fields.order_case as string) || '',
+                }));
+
+                return {
+                    totalCompanies: companiesRecs.length,
+                    totalProducts: productsRecs.length,
+                    totalWarranties: warrantiesRecs.length,
+                    totalServices: servicesRecs.length,
+                    warranty: { active: warrantyActive, expired: warrantyExpired, nearExpiry: warrantyNearExpiry },
+                    service: {
+                        pending: servicePending,
+                        completed: serviceCompleted,
+                        cancelled: serviceCancelled,
+                        cm: serviceCM,
+                        pm: servicePM,
+                    },
+                    recentServices,
+                };
+            } catch (error) {
+                console.error('getDashboardStats error:', error);
+                return null;
+            }
+        } else {
+            // MSSQL fallback
+            return null;
+        }
+    },
 };

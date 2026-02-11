@@ -10,7 +10,7 @@ export async function getSession() {
     }
 }
 
-export async function setSession(user: { id: string | number; username: string }) {
+export async function setSession(user: { id: string | number; username: string; role?: string }) {
     (await cookies()).set("session", JSON.stringify(user), {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
