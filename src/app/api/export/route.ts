@@ -1,10 +1,14 @@
 import { dataProvider } from "@/db/provider";
 import { getSession } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { NextResponse } from "next/server";
 
 export async function GET() {
     const session = await getSession();
     if (!session) return new Response("Unauthorized", { status: 401 });
+    if (!hasPermission(session.role, 'export', 'execute')) {
+        return NextResponse.json({ error: "ไม่มีสิทธิ์ส่งออกข้อมูล" }, { status: 403 });
+    }
 
     try {
         const data = await dataProvider.getExportData();
