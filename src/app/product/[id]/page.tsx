@@ -29,6 +29,8 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     const activeWarranty = productWarranties.find((w) => new Date(w.startDate) <= now && new Date(w.endDate) >= now);
 
     const productServicesRaw = await dataProvider.getServicesByProduct(productId);
+    const allTechnicians = await dataProvider.getTechnicians();
+
     // Normalize data structure for UI and sort by date ascending
     const productServices = productServicesRaw
         .map((item: ServiceWithWarranty) => ({
@@ -176,6 +178,14 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                             const isFuture = new Date(service.entryTime) > now && service.status !== "เสร็จสิ้น";
                             const isCompleted = service.status === "เสร็จสิ้น";
 
+                            let displayTechnician = service.technician;
+                            if (service.technicians && service.technicians.length > 0) {
+                                const names = allTechnicians
+                                    .filter(t => service.technicians?.includes(t.id))
+                                    .map(t => t.name);
+                                if (names.length > 0) displayTechnician = names.join(", ");
+                            }
+
                             return (
                                 <EditServiceDialog
                                     key={service.id}
@@ -235,9 +245,9 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                                                                         ? `${service.description?.substring(0, 70)}...` 
                                                                         : (service.description || "ไม่มีรายละเอียดระบุไว้")}
                                                                 </p>
-                                                                {service.technician && (
+                                                                {displayTechnician && (
                                                                     <p className="text-sm font-medium text-slate-700 flex items-center gap-1.5 mt-1">
-                                                                        <User className="w-4 h-4 text-primary/60" /> ผู้ดำเนินงาน: {service.technician}
+                                                                        <User className="w-4 h-4 text-primary/60" /> ผู้ดำเนินงาน: {displayTechnician}
                                                                     </p>
                                                                 )}
                                                                 <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">

@@ -38,6 +38,8 @@ export default async function SearchPage({
     results = await dataProvider.findServiceByOrderCase(cleanQuery);
   }
 
+  const allTechnicians = await dataProvider.getTechnicians();
+
   return (
     <div className="container mx-auto py-10 max-w-4xl">
       <h1 className="text-3xl font-bold mb-8 text-center text-slate-800">
@@ -79,7 +81,15 @@ export default async function SearchPage({
           <h2 className="text-xl font-semibold text-slate-700">
             พบข้อมูลจำนวน {results.length} รายการ
           </h2>
-          {results.map((result, index) => (
+          {results.map((result, index) => {
+            const technicianNames = result.service.technicians && result.service.technicians.length > 0
+                ? allTechnicians
+                    .filter(t => result.service.technicians?.includes(t.id))
+                    .map(t => t.name)
+                    .join(", ")
+                : result.service.technician || "-";
+
+            return (
             <Card
               key={result.service.id || index}
               className="overflow-hidden border-t-4 border-t-blue-500 shadow-xl mb-8"
@@ -154,7 +164,7 @@ export default async function SearchPage({
                   <div className="space-y-6">
                     <div>
                       <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">
-                        ขอมูลลูกค้า & สินค้า
+                        ข้อมูลลูกค้า & สินค้า
                       </h3>
                       <div className="bg-slate-50 p-4 rounded-lg space-y-3">
                         <div className="flex justify-between">
@@ -196,9 +206,10 @@ export default async function SearchPage({
                               ผู้ปฏิบัติงาน
                             </p>
                             <p className="font-medium">
-                              {result.service.technician || "-"}
+                              {technicianNames}
                             </p>
                           </div>
+
                         </div>
                         <div className="flex items-start gap-3">
                           <Calendar className="w-5 h-5 text-slate-400 mt-0.5" />
@@ -249,7 +260,8 @@ export default async function SearchPage({
                 </div>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
