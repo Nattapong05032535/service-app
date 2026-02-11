@@ -12,8 +12,26 @@ export type NewProduct = typeof products.$inferInsert;
 export type Warranty = typeof warranties.$inferSelect;
 export type NewWarranty = typeof warranties.$inferInsert;
 
-export type Service = typeof services.$inferSelect;
-export type NewService = typeof services.$inferInsert;
+export type newTechnician = {
+    name: string;
+    position?: string;
+    contactNumber?: string;
+    email?: string;
+    skills?: string;
+    status?: string;
+    notes?: string;
+}
+
+export type Technician = newTechnician & {
+    id: string;
+}
+
+export type Service = typeof services.$inferSelect & {
+    technicians?: string[]; // Array of Technician IDs
+};
+export type NewService = typeof services.$inferInsert & {
+    technicians?: string[];
+};
 
 export type ServicePart = typeof serviceParts.$inferSelect;
 export type NewServicePart = typeof serviceParts.$inferInsert;

@@ -187,8 +187,19 @@ export async function updateServiceAction(formData: FormData): Promise<void> {
     const status = formData.get("status") as string;
     const warrantyId = formData.get("warrantyId") as string;
 
+    const techniciansJson = formData.get("techniciansJson") as string;
+
     try {
         const parts = partsjson ? JSON.parse(partsjson) : undefined;
+        let technicians: string[] | undefined = undefined;
+        if (techniciansJson) {
+            try {
+                technicians = JSON.parse(techniciansJson);
+            } catch (e) {
+                console.error("Failed to parse technicians json:", e);
+            }
+        }
+
         await dataProvider.updateService(id, {
             entryTime,
             exitTime,
@@ -198,6 +209,7 @@ export async function updateServiceAction(formData: FormData): Promise<void> {
             techService,
             parts,
             status,
+            technicians,
         });
     } catch (e: unknown) {
         throw new Error(e instanceof Error ? e.message : "Failed to update service");
@@ -215,6 +227,10 @@ export async function updateServiceAction(formData: FormData): Promise<void> {
 
 export async function getServicePartsAction(orderCase: string) {
     return await dataProvider.getServiceParts(orderCase);
+}
+
+export async function getTechniciansAction() {
+    return await dataProvider.getTechnicians();
 }
 
 export interface ImportRow {

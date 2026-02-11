@@ -21,4 +21,5 @@ export const TABLES = {
     SERVICES: 'Services',
     USERS: 'Users',
     SERVICE_PARTS: 'ServiceParts',
+    TECHNICIANS: 'Technicians',
 };

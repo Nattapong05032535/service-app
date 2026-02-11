@@ -13,14 +13,17 @@ import {
   Trash2,
   Package,
   Loader2,
+  ChevronDown,
 } from "lucide-react";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   updateServiceAction,
   getServicePartsAction,
+  getTechniciansAction,
 } from "@/app/actions/business";
-import { Service } from "@/types/database";
+import { Service, Technician } from "@/types/database";
 
 import { useLoading } from "@/context/LoadingContext";
 import { formatDate } from "@/lib/utils";
@@ -49,30 +52,56 @@ export function EditServiceDialog({
   const [hasParts, setHasParts] = useState(false);
   const [isLoadingParts, setIsLoadingParts] = useState(false);
 
-  // Fetch parts when dialog opens
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [selectedTechnicians, setSelectedTechnicians] = useState<string[]>([]);
+  const [isLoadingTechnicians, setIsLoadingTechnicians] = useState(false);
+
+  // Initialize selected technicians from service prop
   useEffect(() => {
-    if (isOpen && service.orderCase) {
-      const fetchParts = async () => {
-        setIsLoadingParts(true);
-        try {
-          const data = await getServicePartsAction(service.orderCase || "");
-          if (data && data.length > 0) {
-            setParts(
-              data.map((p) => ({
-                partNo: p.partNo || "",
-                details: p.details || "",
-                qty: String(p.qty || 0),
-              })),
-            );
-            setHasParts(true);
-          }
-        } catch (error) {
-          console.error("Failed to fetch parts:", error);
-        } finally {
-          setIsLoadingParts(false);
+    if (service.technicians && Array.isArray(service.technicians)) {
+      setSelectedTechnicians(service.technicians);
+    }
+  }, [service.technicians]);
+
+  // Fetch parts and technicians when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+        const fetchTechnicians = async () => {
+            setIsLoadingTechnicians(true);
+            try {
+                const data = await getTechniciansAction();
+                setTechnicians(data);
+            } catch (error) {
+                console.error("Failed to fetch technicians:", error);
+            } finally {
+                setIsLoadingTechnicians(false);
+            }
+        };
+        fetchTechnicians();
+
+        if (service.orderCase) {
+            const fetchParts = async () => {
+                setIsLoadingParts(true);
+                try {
+                const data = await getServicePartsAction(service.orderCase || "");
+                if (data && data.length > 0) {
+                    setParts(
+                    data.map((p) => ({
+                        partNo: p.partNo || "",
+                        details: p.details || "",
+                        qty: String(p.qty || 0),
+                    })),
+                    );
+                    setHasParts(true);
+                }
+                } catch (error) {
+                console.error("Failed to fetch parts:", error);
+                } finally {
+                setIsLoadingParts(false);
+                }
+            };
+            fetchParts();
         }
-      };
-      fetchParts();
     }
   }, [isOpen, service.orderCase]);
 
@@ -95,6 +124,7 @@ export function EditServiceDialog({
     // If hasParts is false, we send an empty array
     const finalParts = hasParts ? parts : [];
     formData.set("partsjson", JSON.stringify(finalParts));
+    formData.set("techniciansJson", JSON.stringify(selectedTechnicians));
 
     await withLoading(async () => {
       try {
@@ -172,6 +202,11 @@ export function EditServiceDialog({
                 name="partsjson"
                 value={JSON.stringify(hasParts ? parts : [])}
               />
+              <input 
+                type="hidden" 
+                name="techniciansJson" 
+                value={JSON.stringify(selectedTechnicians)} 
+              />
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -209,15 +244,67 @@ export function EditServiceDialog({
 
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2">
-                  <User className="w-4 h-4 text-primary/60" /> ชื่อผู้เข้าทำ
-                  (ช่าง)
+                  <User className="w-4 h-4 text-primary/60" /> ชื่อผู้เข้าทำ (ช่าง)
                 </label>
-                <Input
-                  name="technician"
-                  defaultValue={service.technician || ""}
-                  placeholder="ระบุชื่อช่างที่เข้าปฏิบัติงาน"
-                  className="h-11 rounded-xl"
-                />
+                
+                {/* Selected Technicians (Tags) */}
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {technicians
+                    .filter((t) => selectedTechnicians.includes(t.id))
+                    .map((tech) => (
+                      <Badge
+                        key={tech.id}
+                        variant="secondary"
+                        className="pl-2 pr-1 py-1 h-7 flex items-center gap-1 bg-primary/10 text-primary hover:bg-primary/20"
+                      >
+                        <span className="text-xs font-medium">{tech.name}</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelectedTechnicians(
+                              selectedTechnicians.filter((id) => id !== tech.id)
+                            )
+                          }
+                          className="ml-1 rounded-full p-0.5 hover:bg-primary/20 text-primary/60 hover:text-primary transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                </div>
+
+                {isLoadingTechnicians ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground p-2">
+                    <Loader2 className="w-4 h-4 animate-spin" /> กำลังโหลดรายชื่อช่าง...
+                  </div>
+                ) : (
+                  <div className="relative">
+                     <select
+                      className="w-full h-11 rounded-xl border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring appearance-none"
+                      value=""
+                      onChange={(e) => {
+                        const techId = e.target.value;
+                        if (techId && !selectedTechnicians.includes(techId)) {
+                           setSelectedTechnicians([...selectedTechnicians, techId]);
+                        }
+                        // Reset select
+                        e.target.value = "";
+                      }}
+                    >
+                      <option value="" disabled>+ เพิ่มรายชื่อช่าง...</option>
+                      {technicians
+                        .filter((t) => !selectedTechnicians.includes(t.id))
+                        .map((tech) => (
+                          <option key={tech.id} value={tech.id}>
+                            {tech.name} {tech.position ? `(${tech.position})` : ""}
+                          </option>
+                        ))}
+                    </select>
+                     <div className="absolute right-3 top-3.5 pointer-events-none">
+                        <ChevronDown className="h-4 w-4 opacity-50" />
+                     </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
