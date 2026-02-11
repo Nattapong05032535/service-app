@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { Button } from "./ui/button";
 import { ConditionalExportButton } from "./ConditionalExportButton";
+import { NavbarLinks } from "./NavbarLinks";
 
 const ROLE_BADGE_STYLES: Record<string, string> = {
   "Super Admin": "bg-red-100 text-red-700 border-red-300",
@@ -25,34 +26,35 @@ export async function Navbar() {
             Service App
           </Link>
           {session && (
-            <div className="hidden md:flex gap-4 text-lg font-medium">
-              <Link
-                href="/customers"
-                className="hover:text-primary transition-colors"
-              >
-                รายชื่อลูกค้า
-              </Link>
-              <Link
-                href="/products"
-                className="hover:text-primary transition-colors"
-              >
-                รายชื่อสินค้า
-              </Link>
-              <Link
-                href="/search"
-                className="hover:text-primary transition-colors"
-              >
-                ค้นหาใบงาน
-              </Link>
-              {hasPermission(role, "import", "execute") && (
-                <Link
-                  href="/import"
-                  className="hover:text-primary transition-colors"
-                >
-                  Import
-                </Link>
-              )}
-            </div>
+            <NavbarLinks
+              items={[
+                {
+                  href: "/dashboard",
+                  label: "Dashboard",
+                  visible: hasPermission(role, "dashboard", "read"),
+                },
+                {
+                  href: "/customers",
+                  label: "รายชื่อลูกค้า",
+                  visible: true,
+                },
+                {
+                  href: "/products",
+                  label: "รายชื่อสินค้า",
+                  visible: true,
+                },
+                {
+                  href: "/search",
+                  label: "ค้นหาใบงาน",
+                  visible: true,
+                },
+                {
+                  href: "/import",
+                  label: "Import",
+                  visible: hasPermission(role, "import", "execute"),
+                },
+              ]}
+            />
           )}
         </div>
         <div className="flex items-center gap-4">

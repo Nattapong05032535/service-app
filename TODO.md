@@ -37,10 +37,10 @@
 - **แนวทาง:** เพิ่ม update functions + UI (edit dialog/form)
 - **สถานะ:** ⬜ ยังไม่ได้ทำ
 
-### 6. Dashboard ไม่ใช่ Dashboard จริง
+### 6. ~~Dashboard ไม่ใช่ Dashboard จริง~~
 - **ปัญหา:** `dashboard/page.tsx` เนื้อหาซ้ำกับ `customers/page.tsx` เกือบ 100% ไม่มี statistics, charts
 - **แนวทาง:** สร้าง Dashboard จริงที่มี: จำนวนลูกค้า, สินค้า, warranty ใกล้หมด, service pending, charts
-- **สถานะ:** ⬜ ยังไม่ได้ทำ
+- **สถานะ:** ✅ เสร็จแล้ว (2026-02-11) — Summary cards + Warranty/Service stats + Recent services table
 
 ### 7. Error Handling — ไม่มี User-Facing Feedback
 - **ปัญหา:** Server Actions throw errors แต่ไม่มี toast/notification system
@@ -66,10 +66,10 @@
 - **แนวทาง:** ใช้ JWT signed token หรือ encrypted session
 - **สถานะ:** ⬜ ยังไม่ได้ทำ
 
-### 11. RBAC — ไม่มี Role-Based Access Control
+### 11. ~~RBAC — ไม่มี Role-Based Access Control~~
 - **ปัญหา:** User schema มีแค่ `username`, `password`, `email` — ไม่มี `role`
 - **แนวทาง:** เพิ่ม `role` field ใน users table + permission check logic
-- **สถานะ:** ⬜ ยังไม่ได้ทำ
+- **สถานะ:** ✅ เสร็จแล้ว (2026-02-11) — Option A: role field ใน Users + Permission config ใน code
 
 ### 12. Customers Pagination — ไม่มี Pagination
 - **ปัญหา:** Customers page ตัดแค่ 10 ตัวแรก (`slice(0, 10)`) — ไม่มีปุ่ม next page
