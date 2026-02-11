@@ -4,6 +4,7 @@ import { hasPermission } from "@/lib/permissions";
 import { Button } from "./ui/button";
 import { ConditionalExportButton } from "./ConditionalExportButton";
 import { NavbarLinks } from "./NavbarLinks";
+import { UserMenu } from "./UserMenu";
 
 const ROLE_BADGE_STYLES: Record<string, string> = {
   "Super Admin": "bg-red-100 text-red-700 border-red-300",
@@ -53,6 +54,11 @@ export async function Navbar() {
                   label: "Import",
                   visible: hasPermission(role, "import", "execute"),
                 },
+                {
+                  href: "/parts",
+                  label: "อะไหล่",
+                  visible: hasPermission(role, "dashboard", "read"),
+                },
               ]}
             />
           )}
@@ -60,24 +66,19 @@ export async function Navbar() {
         <div className="flex items-center gap-4">
           {session ? (
             <div className="flex items-center gap-3">
-              <span className="text-sm text-muted-foreground italic">
-                {session.username}
-              </span>
-              {role && (
-                <span
-                  className={`text-xs font-medium px-2 py-0.5 rounded-full border ${ROLE_BADGE_STYLES[role] || ROLE_BADGE_STYLES["User"]}`}
-                >
-                  {role}
-                </span>
-              )}
               {hasPermission(role, "export", "execute") && (
                 <ConditionalExportButton />
               )}
-              <form action="/api/auth/logout" method="POST">
-                <Button variant="outline" size="sm">
-                  Logout
-                </Button>
-              </form>
+              <UserMenu
+                user={{
+                  username: session.username,
+                  role: role,
+                  name: session.name,
+                }}
+                roleStyles={
+                  ROLE_BADGE_STYLES[role || "User"] || ROLE_BADGE_STYLES["User"]
+                }
+              />
             </div>
           ) : (
             <div className="flex gap-2">

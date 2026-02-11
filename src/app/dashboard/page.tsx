@@ -101,7 +101,7 @@ export default async function DashboardPage(props: {
       icon: PenTool,
       color: "text-orange-600",
       bgColor: "bg-orange-50",
-      href: "/analysis",
+      href: "/parts",
     },
     {
       title: "ใบงาน Service",
@@ -109,7 +109,7 @@ export default async function DashboardPage(props: {
       icon: Wrench,
       color: "text-purple-600",
       bgColor: "bg-purple-50",
-      href: "/services",
+      href: "/search",
     },
   ];
 
