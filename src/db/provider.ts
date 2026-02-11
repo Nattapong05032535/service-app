@@ -1046,19 +1046,108 @@ export const dataProvider = {
     },
 
     // === DASHBOARD ===
-    async getDashboardStats() {
+    // === DASHBOARD ===
+    async getDashboardStats(filter: { company?: string; from?: string; to?: string } = {}) {
         if (isAirtable) {
             try {
-                // Fetch all data in parallel
-                const [companiesRecs, productsRecs, warrantiesRecs, servicesRecs] = await Promise.all([
-                    airtableBase(TABLES.COMPANIES).select({ fields: ['name'] }).all(),
-                    airtableBase(TABLES.PRODUCTS).select({ fields: ['name', 'serialNumber'] }).all(),
-                    airtableBase(TABLES.WARRANTIES).select({ fields: ['startDate', 'endDate', 'type', 'productId'] }).all(),
-                    airtableBase(TABLES.SERVICES).select({
-                        fields: ['type', 'status', 'entryTime', 'exitTime', 'description', 'technician', 'order_case', 'productId'],
-                        sort: [{ field: 'entryTime', direction: 'desc' }],
-                    }).all(),
-                ]);
+                // Fetch data sequentially to prevent Timeouts and Rate Limits
+                const companiesRecs = await airtableBase(TABLES.COMPANIES).select({ fields: ['name'] }).all();
+                
+                // Fetch Products with company link (field is companyId)
+                const productsRecs = await airtableBase(TABLES.PRODUCTS).select({ fields: ['name', 'serialNumber', 'companyId'] }).all();
+                
+                const warrantiesRecs = await airtableBase(TABLES.WARRANTIES).select({ fields: ['startDate', 'endDate', 'type', 'productId'] }).all();
+                
+                // Fetch Services
+                const servicesRecs = await airtableBase(TABLES.SERVICES).select({
+                    fields: ['type', 'status', 'entryTime', 'exitTime', 'description', 'order_case', 'productId'],
+                    sort: [{ field: 'entryTime', direction: 'desc' }],
+                }).all();
+
+                // Fetch ServiceParts with order_case link
+                const servicePartsRecs = await airtableBase(TABLES.SERVICE_PARTS).select({ fields: ['qty', 'order_case'] }).all();
+
+                // --- FILTERING LOGIC ---
+
+                // 1. Filter Companies
+                let filteredCompanies = companiesRecs;
+                const validCompanyIds = new Set<string>();
+
+                if (filter.company) {
+                    const searchLower = filter.company.toLowerCase();
+                    filteredCompanies = companiesRecs.filter(c => 
+                        (c.fields.name as string || '').toLowerCase().includes(searchLower)
+                    );
+                    filteredCompanies.forEach(c => validCompanyIds.add(c.id));
+                } else {
+                    companiesRecs.forEach(c => validCompanyIds.add(c.id));
+                }
+
+                // 2. Filter Products
+                let filteredProducts = productsRecs;
+                // If filtering by company, filter products that belong to those companies
+                if (filter.company) {
+                    filteredProducts = productsRecs.filter(p => {
+                        const rawVal = p.fields.companyId;
+                        const productCompanyIds = Array.isArray(rawVal) ? rawVal : (rawVal ? [rawVal] : []);
+                        // Check if any of the product's linked companies are in our valid/filtered list
+                        return (productCompanyIds as string[]).some(id => validCompanyIds.has(id));
+                    });
+                }
+                const validProductIds = new Set(filteredProducts.map(p => p.id));
+
+                // Date Filtering Helpers
+                const fromDate = filter.from ? new Date(filter.from) : null;
+                const toDate = filter.to ? new Date(filter.to) : null;
+                // Set time to end of day for 'to' date
+                if (toDate) toDate.setHours(23, 59, 59, 999);
+
+                // 3. Filter Warranties
+                const filteredWarranties = warrantiesRecs.filter(w => {
+                    const pid = (w.fields.productId as string[])?.[0]; // Link is array
+                    if (!pid || !validProductIds.has(pid)) return false;
+
+                    // Date filter for warranties (using startDate)
+                    if (fromDate || toDate) {
+                        const startDate = w.fields.startDate ? new Date(w.fields.startDate as string) : null;
+                        if (!startDate) return false;
+                        if (fromDate && startDate < fromDate) return false;
+                        if (toDate && startDate > toDate) return false;
+                    }
+                    return true;
+                });
+
+                // 4. Filter Services
+                const filteredServices = servicesRecs.filter(s => {
+                    const pid = (s.fields.productId as string[])?.[0];
+                    // If company filter active, strict check product. If not, normal check.
+                    // Actually validProductIds contains ALL products if no company filter, so check is safe.
+                    if (filter.company && (!pid || !validProductIds.has(pid))) return false;
+
+                    // Date filter for Services (using entryTime)
+                    if (fromDate || toDate) {
+                        const entryTime = s.fields.entryTime ? new Date(s.fields.entryTime as string) : null;
+                        if (!entryTime) return false; // Or user might want to include null dates? Usually exclude.
+                        if (fromDate && entryTime < fromDate) return false;
+                        if (toDate && entryTime > toDate) return false;
+                    }
+                    return true;
+                });
+                // validServiceIds removed as unused
+                const validServiceOrderCases = new Set(filteredServices.map(s => s.fields.order_case as string).filter(Boolean));
+
+                // 5. Filter ServiceParts
+                // Only count parts used in the filtered services
+                const filteredServiceParts = servicePartsRecs.filter(sp => {
+                    const orderCase = sp.fields.order_case as string;
+                    if (!orderCase) return true; // If no order_case, include (fallback)
+                    return validServiceOrderCases.has(orderCase);
+                });
+
+
+                // --- AGGREGATION based on Filtered Data ---
+
+                const totalPartsUsed = filteredServiceParts.reduce((sum, p) => sum + ((p.fields.qty as number) || 0), 0);
 
                 const now = new Date();
                 const thirtyDaysLater = new Date();
@@ -1069,7 +1158,7 @@ export const dataProvider = {
                 let warrantyExpired = 0;
                 let warrantyNearExpiry = 0;
 
-                for (const w of warrantiesRecs) {
+                for (const w of filteredWarranties) {
                     const endDate = w.fields.endDate ? new Date(w.fields.endDate as string) : null;
                     if (!endDate) continue;
 
@@ -1086,45 +1175,48 @@ export const dataProvider = {
                 let servicePending = 0;
                 let serviceCompleted = 0;
                 let serviceCancelled = 0;
-                let serviceCM = 0;
-                let servicePM = 0;
+                const serviceTypes: Record<string, number> = {};
 
-                for (const s of servicesRecs) {
+                for (const s of filteredServices) {
                     const status = (s.fields.status as string) || '';
-                    const type = (s.fields.type as string) || '';
+                    const type = (s.fields.type as string) || 'Unknown';
 
+                    // Count Status
                     if (status === 'เสร็จสิ้น') serviceCompleted++;
                     else if (status === 'ยกเลิก') serviceCancelled++;
                     else servicePending++;
 
-                    if (type === 'CM') serviceCM++;
-                    else if (type === 'PM') servicePM++;
+                    // Count Types (Dynamic)
+                    if (type) {
+                        serviceTypes[type] = (serviceTypes[type] || 0) + 1;
+                    }
                 }
 
-                // Recent services (latest 10)
-                const recentServices = servicesRecs.slice(0, 10).map(s => ({
+                // Recent services (latest 10) -> Actually filtered list
+                // Return all services for client-side pagination
+                const recentServices = filteredServices.map(s => ({
                     id: s.id,
                     type: (s.fields.type as string) || '',
                     status: (s.fields.status as string) || 'รอดำเนินการ',
                     entryTime: (s.fields.entryTime as string) || '',
                     exitTime: (s.fields.exitTime as string) || '',
                     description: (s.fields.description as string) || '',
-                    technician: (s.fields.technician as string) || '',
+                    technician: '', // Field removed from query to prevent error
                     orderCase: (s.fields.order_case as string) || '',
                 }));
 
                 return {
-                    totalCompanies: companiesRecs.length,
-                    totalProducts: productsRecs.length,
-                    totalWarranties: warrantiesRecs.length,
-                    totalServices: servicesRecs.length,
+                    totalCompanies: filteredCompanies.length,
+                    totalProducts: filteredProducts.length,
+                    totalWarranties: filteredWarranties.length,
+                    totalServices: filteredServices.length,
+                    totalPartsUsed, 
                     warranty: { active: warrantyActive, expired: warrantyExpired, nearExpiry: warrantyNearExpiry },
                     service: {
                         pending: servicePending,
                         completed: serviceCompleted,
                         cancelled: serviceCancelled,
-                        cm: serviceCM,
-                        pm: servicePM,
+                        types: serviceTypes, // Return all types
                     },
                     recentServices,
                 };

@@ -3,7 +3,6 @@ import { getSession } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/Badge";
 import Link from "next/link";
 import {
   Building2,
@@ -16,41 +15,55 @@ import {
   XCircle,
   ArrowRight,
   Activity,
+  PenTool,
 } from "lucide-react";
-import { formatDate } from "@/lib/utils";
+import { RecentServicesTable } from "@/components/dashboard/RecentServicesTable";
+import { DashboardFilter } from "@/components/dashboard/DashboardFilter";
 
-interface RecentService {
-  id: string;
-  type: string;
-  status: string;
-  entryTime: string;
-  exitTime: string;
-  description: string;
-  technician: string;
-  orderCase: string;
-}
-
-const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  เสร็จสิ้น: {
-    label: "เสร็จสิ้น",
-    className: "bg-emerald-100 text-emerald-700",
+const SERVICE_TYPE_CONFIG: Record<
+  string,
+  { label: string; color: string; keys: string[] }
+> = {
+  CM: { label: "Corrective Maintenance", color: "bg-orange-400", keys: ["CM"] },
+  PM: { label: "Preventive Maintenance", color: "bg-blue-400", keys: ["PM"] },
+  IN: {
+    label: "Installation / Repair",
+    color: "bg-green-400",
+    keys: ["IN", "IN_REPAIR"],
   },
-  ยกเลิก: { label: "ยกเลิก", className: "bg-red-100 text-red-700" },
-  รอดำเนินการ: {
-    label: "รอดำเนินการ",
-    className: "bg-amber-100 text-amber-700",
+  OUT: { label: "Uninstallation", color: "bg-red-400", keys: ["OUT"] },
+  S: {
+    label: "Service / Survey",
+    color: "bg-purple-400",
+    keys: ["S", "SERVICE"],
   },
 };
 
-export default async function DashboardPage() {
+export default async function DashboardPage(props: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const searchParams = await props.searchParams;
+
   const session = await getSession();
+
   if (!session) redirect("/login");
 
   if (!hasPermission(session.role, "dashboard", "read")) {
     redirect("/customers");
   }
 
-  const stats = await dataProvider.getDashboardStats();
+  const companyFilter =
+    typeof searchParams.company === "string" ? searchParams.company : undefined;
+  const fromDate =
+    typeof searchParams.from === "string" ? searchParams.from : undefined;
+  const toDate =
+    typeof searchParams.to === "string" ? searchParams.to : undefined;
+
+  const stats = await dataProvider.getDashboardStats({
+    company: companyFilter,
+    from: fromDate,
+    to: toDate,
+  });
 
   if (!stats) {
     return (
@@ -83,12 +96,12 @@ export default async function DashboardPage() {
       href: "/products",
     },
     {
-      title: "ใบรับประกัน",
-      value: stats.totalWarranties,
-      icon: ShieldCheck,
-      color: "text-emerald-600",
-      bgColor: "bg-emerald-50",
-      href: "/products",
+      title: "อะไหล่ทั้งหมดที่ใช้ไป",
+      value: stats.totalPartsUsed || 0,
+      icon: PenTool,
+      color: "text-orange-600",
+      bgColor: "bg-orange-50",
+      href: "/analysis",
     },
     {
       title: "ใบงาน Service",
@@ -96,19 +109,21 @@ export default async function DashboardPage() {
       icon: Wrench,
       color: "text-purple-600",
       bgColor: "bg-purple-50",
-      href: "/search",
+      href: "/services",
     },
   ];
 
   return (
-    <div className="container mx-auto py-10 px-4 space-y-8">
+    <div className="container mx-auto py-4 px-4 space-y-8">
       {/* Header */}
-      <div>
+      {/* <div>
         <h1 className="text-4xl font-extrabold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground mt-1">
           ภาพรวมระบบ — สรุปข้อมูลบริษัท สินค้า การรับประกัน และใบงาน
         </p>
-      </div>
+      </div> */}
+
+      <DashboardFilter />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -148,6 +163,17 @@ export default async function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b">
+              <span className="text-sm font-medium text-muted-foreground">
+                ทั้งหมด
+              </span>
+              <span className="text-2xl font-bold">
+                {stats.totalWarranties.toLocaleString()}{" "}
+                <span className="text-sm font-normal text-muted-foreground">
+                  ใบ
+                </span>
+              </span>
+            </div>
             <StatRow
               icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />}
               label="ยังอยู่ในประกัน"
@@ -181,6 +207,17 @@ export default async function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b">
+              <span className="text-sm font-medium text-muted-foreground">
+                ทั้งหมด
+              </span>
+              <span className="text-2xl font-bold">
+                {stats.totalServices.toLocaleString()}{" "}
+                <span className="text-sm font-normal text-muted-foreground">
+                  ใบ
+                </span>
+              </span>
+            </div>
             <StatRow
               icon={<Clock className="w-4 h-4 text-amber-500" />}
               label="รอดำเนินการ"
@@ -202,26 +239,32 @@ export default async function DashboardPage() {
               total={stats.totalServices}
               barColor="bg-red-500"
             />
-            <div className="border-t pt-3 mt-3">
-              <div className="flex items-center gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-orange-400" />
-                  <span className="text-muted-foreground">
-                    CM:{" "}
-                    <strong className="text-foreground">
-                      {stats.service.cm}
-                    </strong>
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-blue-400" />
-                  <span className="text-muted-foreground">
-                    PM:{" "}
-                    <strong className="text-foreground">
-                      {stats.service.pm}
-                    </strong>
-                  </span>
-                </div>
+
+            <div className="border-t pt-4 mt-4">
+              <h4 className="text-sm font-semibold mb-3">แยกตามประเภทงาน</h4>
+              <div className="grid grid-cols-5 gap-3">
+                {Object.entries(SERVICE_TYPE_CONFIG).map(([key, config]) => {
+                  let count = 0;
+                  const typesData = stats.service.types || {};
+                  config.keys.forEach((k) => {
+                    count += typesData[k] || 0;
+                  });
+
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-center justify-between p-2 bg-muted/40 rounded-lg border-gray-300 border transition-colors "
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`w-2.5 h-2.5 rounded-full ${config.color}`}
+                        />
+                        <span className="font-semibold text-sm">{key}</span>
+                      </div>
+                      <span className="font-bold text-sm">{count}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </CardContent>
@@ -245,73 +288,7 @@ export default async function DashboardPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {stats.recentServices.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">
-              ยังไม่มีใบงาน Service
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-muted-foreground">
-                    <th className="pb-3 font-medium">Order Case</th>
-                    <th className="pb-3 font-medium">ประเภท</th>
-                    <th className="pb-3 font-medium">สถานะ</th>
-                    <th className="pb-3 font-medium hidden md:table-cell">
-                      วันเข้างาน
-                    </th>
-                    <th className="pb-3 font-medium hidden lg:table-cell">
-                      ช่างเทคนิค
-                    </th>
-                    <th className="pb-3 font-medium hidden lg:table-cell">
-                      รายละเอียด
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stats.recentServices.map((svc: RecentService) => {
-                    const statusConfig =
-                      STATUS_CONFIG[svc.status] || STATUS_CONFIG["รอดำเนินการ"];
-                    return (
-                      <tr
-                        key={svc.id}
-                        className="border-b last:border-0 hover:bg-muted/50 transition-colors"
-                      >
-                        <td className="py-3 font-mono text-xs">
-                          {svc.orderCase || "-"}
-                        </td>
-                        <td className="py-3">
-                          <Badge
-                            className={
-                              svc.type === "CM"
-                                ? "bg-orange-100 text-orange-700"
-                                : "bg-blue-100 text-blue-700"
-                            }
-                          >
-                            {svc.type || "-"}
-                          </Badge>
-                        </td>
-                        <td className="py-3">
-                          <Badge className={statusConfig.className}>
-                            {statusConfig.label}
-                          </Badge>
-                        </td>
-                        <td className="py-3 hidden md:table-cell text-muted-foreground">
-                          {svc.entryTime ? formatDate(svc.entryTime) : "-"}
-                        </td>
-                        <td className="py-3 hidden lg:table-cell text-muted-foreground">
-                          {svc.technician || "-"}
-                        </td>
-                        <td className="py-3 hidden lg:table-cell text-muted-foreground max-w-[200px] truncate">
-                          {svc.description || "-"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <RecentServicesTable services={stats.recentServices} />
         </CardContent>
       </Card>
     </div>
