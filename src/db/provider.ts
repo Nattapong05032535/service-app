@@ -1229,4 +1229,84 @@ export const dataProvider = {
             return null;
         }
     },
+
+    async getPartsSummary(filter: { company?: string; from?: string; to?: string } = {}) {
+        if (isAirtable) {
+            try {
+                // Fetch Services with product and date filtering
+                const servicesRecs = await airtableBase(TABLES.SERVICES).select({
+                    fields: ['order_case', 'productId', 'entryTime'],
+                }).all();
+
+                const productIdsForCompany = new Set<string>();
+                if (filter.company) {
+                    const companiesRecs = await airtableBase(TABLES.COMPANIES).select({ fields: ['name'] }).all();
+                    const targetCompanyIds = companiesRecs
+                        .filter(c => (c.fields.name as string || '').toLowerCase().includes(filter.company!.toLowerCase()))
+                        .map(c => c.id);
+                    
+                    if (targetCompanyIds.length > 0) {
+                        const productsRecs = await airtableBase(TABLES.PRODUCTS).select({ fields: ['companyId'] }).all();
+                        productsRecs.forEach(p => {
+                            const cIds = Array.isArray(p.fields.companyId) ? p.fields.companyId : [p.fields.companyId];
+                            if ((cIds as string[]).some(id => targetCompanyIds.includes(id))) {
+                                productIdsForCompany.add(p.id);
+                            }
+                        });
+                    }
+                }
+
+                const fromDate = filter.from ? new Date(filter.from) : null;
+                const toDate = filter.to ? new Date(filter.to) : null;
+                if (toDate) toDate.setHours(23, 59, 59, 999);
+
+                const filteredServices = servicesRecs.filter(s => {
+                    const pid = (s.fields.productId as string[])?.[0];
+                    if (filter.company && (!pid || !productIdsForCompany.has(pid))) return false;
+
+                    if (fromDate || toDate) {
+                        const entryTime = s.fields.entryTime ? new Date(s.fields.entryTime as string) : null;
+                        if (!entryTime) return false;
+                        if (fromDate && entryTime < fromDate) return false;
+                        if (toDate && entryTime > toDate) return false;
+                    }
+                    return true;
+                });
+
+                const filteredServiceOrderCases = new Set(filteredServices.map(s => s.fields.order_case as string).filter(Boolean));
+
+                const partsRecs = await airtableBase(TABLES.SERVICE_PARTS).select({
+                    fields: ['part_no', 'details', 'qty', 'order_case'],
+                }).all();
+
+                const filteredParts = partsRecs.filter(p => {
+                    const oc = p.fields.order_case as string;
+                    return filteredServiceOrderCases.has(oc);
+                });
+
+                return filteredParts.map(p => ({
+                    id: p.id,
+                    partNo: p.fields.part_no as string || '',
+                    details: p.fields.details as string || '',
+                    qty: Number(p.fields.qty) || 0,
+                    orderCase: p.fields.order_case as string || '',
+                    createdAt: '' 
+                }));
+            } catch (error) {
+                console.error('getPartsSummary error:', error);
+                return [];
+            }
+        } else {
+            // Basic MSSQL mapping (filtering not implemented for SQL yet)
+            const results = await mssqlDb.select().from(serviceParts).orderBy(desc(serviceParts.createdAt));
+            return results.map(r => ({
+                id: r.id.toString(),
+                partNo: r.partNo || '',
+                details: r.details || '',
+                qty: Number(r.qty) || 0,
+                orderCase: r.orderCase || '',
+                createdAt: r.createdAt ? r.createdAt.toISOString() : ''
+            }));
+        }
+    }
 };
