@@ -3,7 +3,6 @@ import { getSession } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/Badge";
 import Link from "next/link";
 import {
   Building2,
@@ -18,30 +17,8 @@ import {
   Activity,
   PenTool,
 } from "lucide-react";
-import { formatDate } from "@/lib/utils";
-
-interface RecentService {
-  id: string;
-  type: string;
-  status: string;
-  entryTime: string;
-  exitTime: string;
-  description: string;
-  technician: string;
-  orderCase: string;
-}
-
-const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  เสร็จสิ้น: {
-    label: "เสร็จสิ้น",
-    className: "bg-emerald-100 text-emerald-700",
-  },
-  ยกเลิก: { label: "ยกเลิก", className: "bg-red-100 text-red-700" },
-  รอดำเนินการ: {
-    label: "รอดำเนินการ",
-    className: "bg-amber-100 text-amber-700",
-  },
-};
+import { RecentServicesTable } from "@/components/dashboard/RecentServicesTable";
+import { DashboardFilter } from "@/components/dashboard/DashboardFilter";
 
 const SERVICE_TYPE_CONFIG: Record<
   string,
@@ -62,7 +39,11 @@ const SERVICE_TYPE_CONFIG: Record<
   },
 };
 
-export default async function DashboardPage() {
+export default async function DashboardPage(props: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const searchParams = await props.searchParams;
+
   const session = await getSession();
 
   if (!session) redirect("/login");
@@ -71,7 +52,18 @@ export default async function DashboardPage() {
     redirect("/customers");
   }
 
-  const stats = await dataProvider.getDashboardStats();
+  const companyFilter =
+    typeof searchParams.company === "string" ? searchParams.company : undefined;
+  const fromDate =
+    typeof searchParams.from === "string" ? searchParams.from : undefined;
+  const toDate =
+    typeof searchParams.to === "string" ? searchParams.to : undefined;
+
+  const stats = await dataProvider.getDashboardStats({
+    company: companyFilter,
+    from: fromDate,
+    to: toDate,
+  });
 
   if (!stats) {
     return (
@@ -122,14 +114,16 @@ export default async function DashboardPage() {
   ];
 
   return (
-    <div className="container mx-auto py-10 px-4 space-y-8">
+    <div className="container mx-auto py-4 px-4 space-y-8">
       {/* Header */}
-      <div>
+      {/* <div>
         <h1 className="text-4xl font-extrabold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground mt-1">
           ภาพรวมระบบ — สรุปข้อมูลบริษัท สินค้า การรับประกัน และใบงาน
         </p>
-      </div>
+      </div> */}
+
+      <DashboardFilter />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -294,74 +288,7 @@ export default async function DashboardPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {stats.recentServices.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">
-              ยังไม่มีใบงาน Service
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-muted-foreground">
-                    <th className="pb-3 font-medium">Order Case</th>
-                    <th className="pb-3 font-medium">ประเภท</th>
-                    <th className="pb-3 font-medium">สถานะ</th>
-                    <th className="pb-3 font-medium hidden md:table-cell">
-                      วันเข้างาน
-                    </th>
-                    <th className="pb-3 font-medium hidden lg:table-cell">
-                      ช่างเทคนิค
-                    </th>
-                    <th className="pb-3 font-medium hidden lg:table-cell">
-                      รายละเอียด
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stats.recentServices.map((svc: RecentService) => {
-                    const statusConfig =
-                      STATUS_CONFIG[svc.status] || STATUS_CONFIG["รอดำเนินการ"];
-                    return (
-                      <tr
-                        key={svc.id}
-                        className="border-b last:border-0 hover:bg-muted/50 transition-colors"
-                      >
-                        <td className="py-3 font-mono text-xs">
-                          {svc.orderCase || "-"}
-                        </td>
-                        <td className="py-3">
-                          <Badge
-                            className={
-                              svc.type === "CM" ||
-                              svc.type === "Corrective Maintenance"
-                                ? "bg-orange-100 text-orange-700"
-                                : "bg-blue-100 text-blue-700"
-                            }
-                          >
-                            {svc.type || "-"}
-                          </Badge>
-                        </td>
-                        <td className="py-3">
-                          <Badge className={statusConfig.className}>
-                            {statusConfig.label}
-                          </Badge>
-                        </td>
-                        <td className="py-3 hidden md:table-cell text-muted-foreground">
-                          {svc.entryTime ? formatDate(svc.entryTime) : "-"}
-                        </td>
-                        <td className="py-3 hidden lg:table-cell text-muted-foreground">
-                          {svc.technician || "-"}
-                        </td>
-                        <td className="py-3 hidden lg:table-cell text-muted-foreground max-w-[200px] truncate">
-                          {svc.description || "-"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <RecentServicesTable services={stats.recentServices} />
         </CardContent>
       </Card>
     </div>
