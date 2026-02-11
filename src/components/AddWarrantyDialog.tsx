@@ -122,12 +122,11 @@ export function AddWarrantyDialog({ productId }: { productId: string }) {
                                         name="pmInterval"
                                         className="w-full h-11 rounded-xl border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                     >
-                                        <option value="1">1 เดือนครั้ง</option>
-                                        <option value="2">2 เดือนครั้ง</option>
-                                        <option value="3">3 เดือนครั้ง</option>
-                                        <option value="4">4 เดือนครั้ง</option>
-                                        <option value="6">6 เดือนครั้ง</option>
-                                        <option value="12">12 เดือนครั้ง (รายปี)</option>
+                                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((month) => (
+                                            <option key={month} value={month}>
+                                                {month} เดือนครั้ง{month === 12 ? " (รายปี)" : ""}
+                                            </option>
+                                        ))}
                                     </select>
                                 </div>
                             </div>
