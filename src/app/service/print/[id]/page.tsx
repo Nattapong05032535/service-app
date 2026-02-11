@@ -15,6 +15,14 @@ export default async function ServicePrintPage({ params }: { params: Promise<{ i
 
     const { service, warranty, product, company } = detail;
     const parts = await dataProvider.getServiceParts(service.orderCase || "");
+    const allTechnicians = await dataProvider.getTechnicians();
+
+    const technicianNames = service.technicians && service.technicians.length > 0
+        ? allTechnicians
+            .filter(t => service.technicians?.includes(t.id))
+            .map(t => t.name)
+            .join(", ")
+        : service.technician || "-";
 
     return (
         <div className="min-h-screen bg-white md:p-8 print:p-0 font-sans text-black">
@@ -118,7 +126,7 @@ export default async function ServicePrintPage({ params }: { params: Promise<{ i
                         <div className="grid grid-cols-3 px-3 py-1.5 text-[10px] border-b border-black">
                             <div>{formatDateTime(service.entryTime)}</div>
                             <div>{service.exitTime ? formatDateTime(service.exitTime) : "ยังไม่ระบุ"}</div>
-                            <div className="font-bold">{service.technician || "-"}</div>
+                            <div className="font-bold">{technicianNames}</div>
                         </div>
                         <div className="px-3 py-2 border-b border-black">
                             <p className="text-[9px] font-bold text-black uppercase tracking-wider mb-0.5">อาการเสีย:</p>

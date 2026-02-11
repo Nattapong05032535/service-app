@@ -11,6 +11,7 @@ import {
     ServicePart, NewServicePart,
     ProductWithLatestWarranty,
     ServiceWithWarranty, ServiceDetail,
+    Technician,
     CompanyInput, ProductInput, WarrantyInput, ServiceInput
 } from "@/types/database";
 import { FieldSet } from "airtable";
@@ -28,7 +29,7 @@ function cleanDataForAirtable(data: Record<string, unknown>): FieldSet {
             continue;
         }
 
-        if (['companyId', 'productId', 'warrantyId', 'createdBy'].includes(key)) {
+        if (['companyId', 'productId', 'warrantyId', 'createdBy', 'technicians'].includes(key)) {
             // Ensure linked fields are arrays of strings
             cleaned[key] = Array.isArray(val) ? (val as unknown[]).map(v => String(v)) : [String(val)];
         } else if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean' || Array.isArray(val)) {
@@ -421,7 +422,7 @@ export const dataProvider = {
         }
     },
 
-    async getServiceDetail(id: string | number) {
+    async getServiceDetail(id: string | number): Promise<ServiceDetail | null> {
         console.log(`Fetching service detail for ID: ${id}`);
         if (isAirtable) {
             try {
@@ -645,7 +646,7 @@ export const dataProvider = {
         }
     },
 
-    async getNextOrderNumber(prefix: 'PM' | 'CM' | 'S' | 'IN' | 'OUT') {
+    async getNextOrderNumber(prefix: 'PM' | 'CM' | 'S' | 'IN' | 'OUT' | 'INS') {
         if (isAirtable) {
             const records = await airtableBase(TABLES.SERVICES).select({
                 filterByFormula: `FIND('${prefix}_', {order_case})`,
@@ -695,6 +696,21 @@ export const dataProvider = {
             }) as unknown as ServicePart[];
         } else {
             return await mssqlDb.select().from(serviceParts).where(eq(serviceParts.orderCase, orderCase));
+        }
+    },
+
+    async getTechnicians() {
+        if (isAirtable) {
+            const records = await airtableBase(TABLES.TECHNICIANS).select({
+                sort: [{ field: 'name', direction: 'asc' }]
+            }).all();
+            return records.map(r => ({
+                id: r.id,
+                ...r.fields
+            })) as unknown as Technician[];
+        } else {
+            // For now, return empty if not using Airtable, or implement SQL table
+            return [];
         }
     },
 
@@ -751,11 +767,12 @@ export const dataProvider = {
         const input = serviceData as Record<string, unknown>;
         let order_case = (input.orderCase || input.order_case) as string | undefined;
         
-        if (!order_case && (data.type === 'PM' || data.type === 'CM' || data.type === 'SERVICE' || data.type === 'IN_REPAIR' || data.type === 'OUT_REPAIR')) {
-            let prefix: 'PM' | 'CM' | 'S' | 'IN' | 'OUT' = 'PM'; // Default
+        if (!order_case && (data.type === 'PM' || data.type === 'CM' || data.type === 'SERVICE' || data.type === 'IN_REPAIR' || data.type === 'OUT_REPAIR' || data.type === 'INSTALL')) {
+            let prefix: 'PM' | 'CM' | 'S' | 'IN' | 'OUT' | 'INS' = 'PM'; // Default
             if (data.type === 'SERVICE') prefix = 'S';
             else if (data.type === 'IN_REPAIR') prefix = 'IN';
             else if (data.type === 'OUT_REPAIR') prefix = 'OUT';
+            else if (data.type === 'INSTALL') prefix = 'INS';
             else prefix = data.type as 'PM' | 'CM';
             
             order_case = await this.getNextOrderNumber(prefix);
@@ -826,6 +843,9 @@ export const dataProvider = {
                 const inputMap = serviceData as Record<string, unknown>;
                 const mappedData: Record<string, unknown> = {};
                 
+                if (inputMap.technicians !== undefined) mappedData.technicians = inputMap.technicians;
+                if (inputMap.techService !== undefined) mappedData.techService = inputMap.techService;
+
                 if (inputMap.description !== undefined) mappedData.description = inputMap.description;
                 if (inputMap.technician !== undefined) mappedData.technician = inputMap.technician;
                 if (inputMap.status !== undefined) mappedData.status = inputMap.status;
