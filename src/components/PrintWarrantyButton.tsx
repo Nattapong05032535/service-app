@@ -117,7 +117,7 @@ export function PrintWarrantyButton({ warranty, product, company }: PrintWarrant
                             <div style="width: 30%; display: flex;">
                             </div>
                             <div style="flex-grow: 1; display: flex;">
-                                <span class="label">โทรศัพท์:</span> <span class="value">${company.contactInfo || ""}</span>
+                                <span class="label">โทรศัพท์:</span> <span class="value">${product.phoneNumber || company.contactInfo || ""}</span>
                             </div>
                         </div>
                         <div class="log-header-row">

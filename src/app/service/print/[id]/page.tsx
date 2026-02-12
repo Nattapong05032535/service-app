@@ -86,9 +86,20 @@ export default async function ServicePrintPage({ params }: { params: Promise<{ i
                                     <p className="text-[10px] text-black">{company?.nameSecondary || ""}</p>
                                 </div>
                             </div>
-                            {company?.taxId && (
-                                <p className="text-[10px] text-black pl-5">Tax ID: {company.taxId}</p>
-                            )}
+                            <div className="pl-5 space-y-0.5">
+                                <p className="text-[10px] text-black">
+                                    <span className="font-bold">ที่อยู่:</span> {product?.branch || "-"}
+                                </p>
+                                <p className="text-[10px] text-black">
+                                    <span className="font-bold">ผู้ติดต่อ:</span> {product?.contactPerson || "-"}
+                                </p>
+                                <p className="text-[10px] text-black">
+                                    <span className="font-bold">โทร:</span> {product?.phoneNumber || company?.contactInfo || "-"}
+                                </p>
+                                {company?.taxId && (
+                                    <p className="text-[10px] text-black">Tax ID: {company.taxId}</p>
+                                )}
+                            </div>
                         </div>
                     </div>
 

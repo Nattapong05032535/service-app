@@ -626,6 +626,26 @@ export const dataProvider = {
         }
     },
 
+    async updateProduct(id: string | number, data: Partial<ProductInput>) {
+        if (isAirtable) {
+            const cleaned = cleanDataForAirtable(data as unknown as Record<string, unknown>);
+            delete (cleaned as Record<string, unknown>).id;
+            const record = await airtableBase(TABLES.PRODUCTS).update(id.toString(), cleaned) as unknown as { id: string, fields: FieldSet };
+            return { id: record.id, ...record.fields } as unknown as Product;
+        } else {
+            const values = { ...data } as any;
+            if (values.purchaseDate) {
+                values.purchaseDate = new Date(values.purchaseDate);
+            }
+            if (values.companyId) {
+                values.companyId = Number(values.companyId);
+            }
+            
+            await mssqlDb.update(products).set(values).where(eq(products.id, Number(id)));
+            return { success: true };
+        }
+    },
+
     async createWarranty(data: WarrantyInput) {
         if (isAirtable) {
             const cleaned = cleanDataForAirtable(data as unknown as Record<string, unknown>);

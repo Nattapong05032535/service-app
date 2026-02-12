@@ -8,6 +8,8 @@ import { cn, formatDate, formatDateTime } from "@/lib/utils";
 import { AddWarrantyDialog } from "@/components/AddWarrantyDialog";
 import AddServiceDialog from "@/components/AddServiceDialog";
 import { EditServiceDialog } from "@/components/EditServiceDialog";
+import { EditProductDialog } from "@/components/EditProductDialog";
+
 import { PrintWarrantyButton } from "@/components/PrintWarrantyButton";
 import { Product, Company, Warranty, ServiceWithWarranty } from "@/types/database";
 
@@ -47,19 +49,21 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                     กลับไปที่ {company?.name}
                 </Link>
             </div>
-
             <div className="flex flex-col md:flex-row gap-6">
                 <Card className="flex-1">
-                    <CardHeader className="flex flex-row items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                            <Package className="w-6 h-6" />
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                <Package className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-3xl font-bold">{product.name}</CardTitle>
+                                <p className="text-muted-foreground">Serial: {product.serialNumber}</p>
+                            </div>
                         </div>
-                        <div>
-                            <CardTitle className="text-3xl font-bold">{product.name}</CardTitle>
-                            <p className="text-muted-foreground">Serial: {product.serialNumber}</p>
-                        </div>
+                        <EditProductDialog product={product} />
                     </CardHeader>
-                    <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div className="p-3 rounded-lg bg-slate-50 border">
                             <p className="text-xs font-bold text-muted-foreground uppercase mb-1">วันที่ซื้อ</p>
                             <p className="font-medium">{formatDate(product.purchaseDate)}</p>
@@ -71,6 +75,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                         <div className="p-3 rounded-lg bg-slate-50 border">
                             <p className="text-xs font-bold text-muted-foreground uppercase mb-1">ผู้ติดต่อ</p>
                             <p className="font-medium">{product.contactPerson || "ไม่ได้ระบุ"}</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-slate-50 border">
+                            <p className="text-xs font-bold text-muted-foreground uppercase mb-1">เบอร์โทรศัพท์</p>
+                            <p className="font-medium">{product.phoneNumber || "ไม่ได้ระบุ"}</p>
                         </div>
                     </CardContent>
                 </Card>
