@@ -240,7 +240,7 @@ export const dataProvider = {
                     // Only near expiry products (which are also technically Active)
                     filterParts.push(`{isNearExpiry} = TRUE()`);
                 } else if (status === 'expired') {
-                    filterParts.push(`OR({warrantyStatus} = '❌ Expired', {warrantyStatus} = '⚠️ No TWarranty')`);
+                    filterParts.push(`OR({warrantyStatus} = '❌ Expired', {warrantyStatus} = '⚠️ No Warranty')`);
                 }
             }
             
@@ -307,7 +307,7 @@ export const dataProvider = {
                     companyId,
                     companyName: company ? (company.fields as FieldSet).name as string : 'Unknown',
                     // Pass Airtable's pre-calculated status fields to avoid client-side recalculation issues
-                    airtableWarrantyStatus: fields.warrantyStatus as string || '⚠️ No TWarranty',
+                    airtableWarrantyStatus: fields.warrantyStatus as string || '⚠️ No Warranty',
                     isNearExpiry: Boolean(fields.isNearExpiry),
                     latestWarranty: fields.latestWarrantyEndDate ? {
                         endDate: new Date(fields.latestWarrantyEndDate as string)
