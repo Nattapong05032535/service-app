@@ -59,6 +59,11 @@ export async function Navbar() {
                   label: "อะไหล่",
                   visible: hasPermission(role, "dashboard", "read"),
                 },
+                {
+                  href: "/settings",
+                  label: "ตั้งค่า",
+                  visible: hasPermission(role, "settings", "read"),
+                },
               ]}
             />
           )}

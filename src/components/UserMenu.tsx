@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { User, LogOut, ChevronDown } from "lucide-react";
+import Link from "next/link";
+import {
+  User,
+  LogOut,
+  ChevronDown,
+  Settings as SettingsIcon,
+} from "lucide-react";
 
 interface IUserMenuProps {
   user: {
@@ -64,6 +70,16 @@ export function UserMenu({ user, roleStyles }: IUserMenuProps) {
             </div>
           </div>
 
+          <div className="p-1 border-b border-muted">
+            <Link
+              href="/settings"
+              onClick={() => setIsOpen(false)}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted rounded-lg transition-colors group"
+            >
+              <SettingsIcon className="w-4 h-4 group-hover:rotate-12 transition-transform" />
+              <span>ตั้งค่า (Settings)</span>
+            </Link>
+          </div>
           <div className="p-1">
             <form action="/api/auth/logout" method="POST" className="w-full">
               <button

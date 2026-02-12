@@ -68,3 +68,15 @@ export const serviceParts = mssqlTable("service_parts", {
     qty: decimal("qty", { precision: 10, scale: 2 }),
     createdAt: datetime2("created_at").default(sql`GETDATE()`),
 });
+
+export const technicians = mssqlTable("technicians", {
+    id: bigint("id", { mode: "number" }).primaryKey().identity(),
+    name: nvarchar("name", { length: 255 }).notNull(),
+    position: nvarchar("position", { length: 255 }),
+    contactNumber: nvarchar("contact_number", { length: 50 }),
+    email: nvarchar("email", { length: 255 }),
+    skills: nvarchar("skills", { length: 1000 }), 
+    status: nvarchar("status", { length: 50 }).default("Active"),
+    notes: nvarchar("notes", { length: 1000 }),
+    createdAt: datetime2("created_at").default(sql`GETDATE()`),
+});

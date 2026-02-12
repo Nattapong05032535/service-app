@@ -7,7 +7,7 @@
 
 export type RoleName = 'Super Admin' | 'Manager' | 'User';
 
-export type Resource = 'company' | 'product' | 'warranty' | 'service' | 'user' | 'import' | 'export' | 'dashboard';
+export type Resource = 'company' | 'product' | 'warranty' | 'service' | 'user' | 'import' | 'export' | 'dashboard' | 'settings';
 
 export type Action = 'create' | 'read' | 'update' | 'delete' | 'execute';
 
@@ -23,6 +23,7 @@ export const PERMISSIONS: PermissionMatrix = {
         import:   { execute: false },
         export:   { execute: true },
         dashboard: { read: true },
+        settings:  { create: true, read: true, update: true, delete: true },
     },
     'Manager': {
         company:  { create: true, read: true, update: true, delete: false },
@@ -33,6 +34,7 @@ export const PERMISSIONS: PermissionMatrix = {
         import:   { execute: false },
         export:   { execute: false },
         dashboard: { read: true },
+        settings:  { create: false, read: true, update: false, delete: false },
     },
     'User': {
         company:  { create: false, read: true, update: false, delete: false },
@@ -43,6 +45,7 @@ export const PERMISSIONS: PermissionMatrix = {
         import:   { execute: false },
         export:   { execute: false },
         dashboard: { read: false },
+        settings:  { create: false, read: false, update: false, delete: false },
     },
 };
 

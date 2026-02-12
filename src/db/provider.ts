@@ -1,18 +1,18 @@
 import { db as mssqlDb } from "./index";
-import { companies, products, warranties, services, users, serviceParts } from "./schema";
+import { companies, products, warranties, services, users, serviceParts, technicians } from "./schema";
 import { eq, sql, desc, like, or, inArray, exists } from "drizzle-orm";
 import { airtableBase, TABLES } from "./airtable";
 import { 
-    User, UserInsert, 
-    Company, NewCompany, 
-    Product, NewProduct, 
-    Warranty, NewWarranty, 
-    Service, NewService,
-    ServicePart, NewServicePart,
-    ProductWithLatestWarranty,
-    ServiceWithWarranty, ServiceDetail,
-    Technician,
-    CompanyInput, ProductInput, WarrantyInput, ServiceInput
+    TUser, TNewUser, 
+    TCompany, TNewCompany, 
+    TProduct, TNewProduct, 
+    TWarranty, TNewWarranty, 
+    TService, TNewService,
+    TServicePart, TNewServicePart,
+    IProductWithLatestWarranty,
+    IServiceWithWarranty, IServiceDetail,
+    TTechnician, TNewTechnician,
+    TCompanyInput, TProductInput, TWarrantyInput, TServiceInput
 } from "@/types/database";
 import { FieldSet } from "airtable";
 import { formatDate } from "@/lib/utils";
@@ -56,14 +56,39 @@ export const dataProvider = {
         }
     },
 
-    async createUser(data: UserInsert) {
+    async createUser(data: TNewUser) {
         if (isAirtable) {
             const cleaned = cleanDataForAirtable(data as unknown as Record<string, unknown>);
             const record = await airtableBase(TABLES.USERS).create(cleaned) as unknown as { id: string, fields: FieldSet };
-            return { id: record.id, ...record.fields } as unknown as User;
+            return { id: record.id, ...record.fields } as unknown as TUser;
         } else {
             await mssqlDb.insert(users).values(data);
             const [user] = await mssqlDb.select().from(users).where(eq(users.username, data.username));
+            return user;
+        }
+    },
+
+    async getUserById(id: string | number) {
+        if (isAirtable) {
+            try {
+                const record = await airtableBase(TABLES.USERS).find(id.toString());
+                return { id: record.id, ...record.fields } as unknown as TUser;
+            } catch { return null; }
+        } else {
+            const [user] = await mssqlDb.select().from(users).where(eq(users.id, Number(id)));
+            return user || null;
+        }
+    },
+
+    async updateUser(id: string | number, data: Partial<TNewUser>) {
+        if (isAirtable) {
+            const cleaned = cleanDataForAirtable(data as unknown as Record<string, unknown>);
+            delete (cleaned as Record<string, unknown>).id;
+            const record = await airtableBase(TABLES.USERS).update(String(id), cleaned) as unknown as { id: string, fields: FieldSet };
+            return { id: record.id, ...record.fields } as unknown as TUser;
+        } else {
+            await mssqlDb.update(users).set(data).where(eq(users.id, Number(id)));
+            const [user] = await mssqlDb.select().from(users).where(eq(users.id, Number(id)));
             return user;
         }
     },
@@ -134,7 +159,7 @@ export const dataProvider = {
                     id: record.id,
                     ...fields,
                     createdBy: Array.isArray(fields.createdBy) ? fields.createdBy[0] : (fields.createdBy as string)
-                } as unknown as Company;
+                } as unknown as TCompany;
             } catch { return null; }
         } else {
             const [company] = await mssqlDb.select().from(companies).where(eq(companies.id, Number(id)));
@@ -149,7 +174,7 @@ export const dataProvider = {
                 maxRecords: 1
             }).firstPage();
             if (records.length === 0) return null;
-            return { id: records[0].id, ...records[0].fields } as unknown as Company;
+            return { id: records[0].id, ...records[0].fields } as unknown as TCompany;
         } else {
             const [company] = await mssqlDb.select().from(companies).where(eq(companies.name, name));
             return company || null;
@@ -181,7 +206,7 @@ export const dataProvider = {
                     id: record.id,
                     ...fields,
                     companyId: Array.isArray(fields.companyId) ? fields.companyId[0] : (fields.companyId as string)
-                } as unknown as Product;
+                } as unknown as TProduct;
             } catch { return null; }
         } else {
             const [product] = await mssqlDb.select().from(products).where(eq(products.id, Number(id)));
@@ -194,7 +219,7 @@ export const dataProvider = {
         status?: string, 
         page?: number, 
         pageSize?: number 
-    } = {}): Promise<{ data: ProductWithLatestWarranty[], totalCount: number }> {
+    } = {}): Promise<{ data: IProductWithLatestWarranty[], totalCount: number }> {
         const { query, status, page = 1, pageSize = 50 } = options;
 
         if (isAirtable) {
@@ -215,7 +240,7 @@ export const dataProvider = {
                     // Only near expiry products (which are also technically Active)
                     filterParts.push(`{isNearExpiry} = TRUE()`);
                 } else if (status === 'expired') {
-                    filterParts.push(`OR({warrantyStatus} = '❌ Expired', {warrantyStatus} = '⚠️ No Warranty')`);
+                    filterParts.push(`OR({warrantyStatus} = '❌ Expired', {warrantyStatus} = '⚠️ No TWarranty')`);
                 }
             }
             
@@ -282,12 +307,12 @@ export const dataProvider = {
                     companyId,
                     companyName: company ? (company.fields as FieldSet).name as string : 'Unknown',
                     // Pass Airtable's pre-calculated status fields to avoid client-side recalculation issues
-                    airtableWarrantyStatus: fields.warrantyStatus as string || '⚠️ No Warranty',
+                    airtableWarrantyStatus: fields.warrantyStatus as string || '⚠️ No TWarranty',
                     isNearExpiry: Boolean(fields.isNearExpiry),
                     latestWarranty: fields.latestWarrantyEndDate ? {
                         endDate: new Date(fields.latestWarrantyEndDate as string)
                     } : null
-                } as unknown as ProductWithLatestWarranty;
+                } as unknown as IProductWithLatestWarranty;
             });
 
             return { data, totalCount };
@@ -316,7 +341,7 @@ export const dataProvider = {
                     ...p.product,
                     companyName: p.company.name,
                     latestWarranty
-                } as ProductWithLatestWarranty;
+                } as IProductWithLatestWarranty;
             });
             
             return { data, totalCount: data.length };
@@ -362,7 +387,7 @@ export const dataProvider = {
     },
 
     // === SERVICES ===
-    async getServicesByProduct(productId: string | number): Promise<ServiceWithWarranty[]> {
+    async getServicesByProduct(productId: string | number): Promise<IServiceWithWarranty[]> {
         if (isAirtable) {
             // 1. Get all warranties for this product (for linking warranty info)
             const productWarranties = await this.getWarrantiesByProduct(productId);
@@ -400,8 +425,8 @@ export const dataProvider = {
                             entryTime: (fields.entryTime || fields.entry_time) as string,
                             exitTime: (fields.exitTime || fields.exit_time) as string,
                             warrantyId: wId
-                        } as unknown as Service,
-                        warranty: (warranty || {}) as Warranty
+                        } as unknown as TService,
+                        warranty: (warranty || {}) as TWarranty
                     };
                 });
             
@@ -418,11 +443,11 @@ export const dataProvider = {
                     eq(services.productId, Number(productId)),
                     eq(warranties.productId, Number(productId))
                 ))
-                .orderBy(desc(services.entryTime)) as unknown as ServiceWithWarranty[];
+                .orderBy(desc(services.entryTime)) as unknown as IServiceWithWarranty[];
         }
     },
 
-    async getServiceDetail(id: string | number): Promise<ServiceDetail | null> {
+    async getServiceDetail(id: string | number): Promise<IServiceDetail | null> {
         console.log(`Fetching service detail for ID: ${id}`);
         if (isAirtable) {
             try {
@@ -441,7 +466,7 @@ export const dataProvider = {
                     entryTime: (sFields.entryTime || sFields.entry_time) as string,
                     exitTime: (sFields.exitTime || sFields.exit_time) as string,
                     warrantyId: wId
-                } as unknown as Service;
+                } as unknown as TService;
                 
                 // Try to get warranty (might be null for CM/SERVICE)
                 const warranty = wId ? await this.getWarrantyById(wId) : null;
@@ -454,10 +479,10 @@ export const dataProvider = {
                     product = await this.getProductById(pId);
                 }
                 
-                if (!product) return { service, warranty: null, product: null, company: null } as unknown as ServiceDetail;
+                if (!product) return { service, warranty: null, product: null, company: null } as unknown as IServiceDetail;
                 
                 const company = await this.getCompanyById(product.companyId as unknown as string);
-                return { service, warranty, product, company } as unknown as ServiceDetail;
+                return { service, warranty, product, company } as unknown as IServiceDetail;
             } catch { return null; }
         } else {
             console.log(`Querying MSSQL for service: ${id}`);
@@ -488,12 +513,12 @@ export const dataProvider = {
 
                 if (records.length === 0) return [];
 
-                const results: ServiceDetail[] = [];
+                const results: IServiceDetail[] = [];
                 
                 // Cache for efficient lookups
-                const productCache = new Map<string, Product | null>();
-                const companyCache = new Map<string, Company | null>();
-                const warrantyCache = new Map<string, Warranty | null>();
+                const productCache = new Map<string, TProduct | null>();
+                const companyCache = new Map<string, TCompany | null>();
+                const warrantyCache = new Map<string, TWarranty | null>();
 
                 for (const serviceRecord of records) {
                     const sFields = serviceRecord.fields as FieldSet;
@@ -510,7 +535,7 @@ export const dataProvider = {
                         entryTime: (sFields.entryTime || sFields.entry_time) as string,
                         exitTime: (sFields.exitTime || sFields.exit_time) as string,
                         warrantyId: wId
-                    } as unknown as Service;
+                    } as unknown as TService;
                     
                     let warranty = null;
                     if (wId) {
@@ -535,7 +560,7 @@ export const dataProvider = {
                     }
                     
                     if (!product) {
-                        results.push({ service, warranty: null, product: null, company: null } as unknown as ServiceDetail);
+                        results.push({ service, warranty: null, product: null, company: null } as unknown as IServiceDetail);
                         continue;
                     }
 
@@ -548,7 +573,7 @@ export const dataProvider = {
                          company = companyCache.get(cId);
                     }
 
-                    results.push({ service, warranty, product, company } as unknown as ServiceDetail);
+                    results.push({ service, warranty, product, company } as unknown as IServiceDetail);
                 }
                 
                 return results;
@@ -576,48 +601,48 @@ export const dataProvider = {
     },
 
     // === CREATIONS ===
-    async createCompany(data: CompanyInput) {
+    async createCompany(data: TCompanyInput) {
         if (isAirtable) {
             const cleaned = cleanDataForAirtable(data as unknown as Record<string, unknown>);
             const record = await airtableBase(TABLES.COMPANIES).create(cleaned) as unknown as { id: string, fields: FieldSet };
-            return { id: record.id, ...record.fields } as unknown as Company;
+            return { id: record.id, ...record.fields } as unknown as TCompany;
         } else {
             const values = {
                 ...data,
                 createdBy: data.createdBy ? Number(data.createdBy) : null,
-            } as NewCompany;
+            } as TNewCompany;
             await mssqlDb.insert(companies).values(values);
             const [company] = await mssqlDb.select().from(companies).where(eq(companies.name, values.name)).orderBy(desc(companies.id));
             return company;
         }
     },
 
-    async updateCompany(id: string | number, data: Partial<CompanyInput>) {
+    async updateCompany(id: string | number, data: Partial<TCompanyInput>) {
         if (isAirtable) {
             const cleaned = cleanDataForAirtable(data as unknown as Record<string, unknown>);
             delete (cleaned as Record<string, unknown>).id; 
             const record = await airtableBase(TABLES.COMPANIES).update(id.toString(), cleaned) as unknown as { id: string, fields: FieldSet };
-            return { id: record.id, ...record.fields } as unknown as Company;
+            return { id: record.id, ...record.fields } as unknown as TCompany;
         } else {
             await mssqlDb.update(companies).set({
                 ...data,
                 createdBy: data.createdBy ? Number(data.createdBy) : undefined,
-            } as Partial<NewCompany>).where(eq(companies.id, Number(id)));
+            } as Partial<TNewCompany>).where(eq(companies.id, Number(id)));
             return { success: true };
         }
     },
 
-    async createProduct(data: ProductInput) {
+    async createProduct(data: TProductInput) {
         if (isAirtable) {
             const cleaned = cleanDataForAirtable(data as unknown as Record<string, unknown>);
             const record = await airtableBase(TABLES.PRODUCTS).create(cleaned) as unknown as { id: string, fields: FieldSet };
-            return { id: record.id, ...record.fields } as unknown as Product;
+            return { id: record.id, ...record.fields } as unknown as TProduct;
         } else {
             const values = {
                 ...data,
                 companyId: data.companyId ? Number(data.companyId) : null,
                 purchaseDate: data.purchaseDate ? new Date(data.purchaseDate) : null,
-            } as NewProduct;
+            } as TNewProduct;
             await mssqlDb.insert(products).values(values);
             const [product] = await mssqlDb.select().from(products)
                 .where(eq(products.serialNumber, values.serialNumber))
@@ -626,18 +651,18 @@ export const dataProvider = {
         }
     },
 
-    async createWarranty(data: WarrantyInput) {
+    async createWarranty(data: TWarrantyInput) {
         if (isAirtable) {
             const cleaned = cleanDataForAirtable(data as unknown as Record<string, unknown>);
             const record = await airtableBase(TABLES.WARRANTIES).create(cleaned) as unknown as { id: string, fields: FieldSet };
-            return { id: record.id, ...record.fields } as unknown as Warranty;
+            return { id: record.id, ...record.fields } as unknown as TWarranty;
         } else {
             const values = {
                 ...data,
                 productId: data.productId ? Number(data.productId) : null,
                 startDate: new Date(data.startDate),
                 endDate: new Date(data.endDate)
-            } as NewWarranty;
+            } as TNewWarranty;
             await mssqlDb.insert(warranties).values(values);
             const [w] = await mssqlDb.select().from(warranties)
                 .where(eq(warranties.productId, Number(values.productId)))
@@ -693,7 +718,7 @@ export const dataProvider = {
                     details: f.details,
                     qty: f.qty
                 };
-            }) as unknown as ServicePart[];
+            }) as unknown as TServicePart[];
         } else {
             return await mssqlDb.select().from(serviceParts).where(eq(serviceParts.orderCase, orderCase));
         }
@@ -707,14 +732,48 @@ export const dataProvider = {
             return records.map(r => ({
                 id: r.id,
                 ...r.fields
-            })) as unknown as Technician[];
+            })) as unknown as TTechnician[];
         } else {
-            // For now, return empty if not using Airtable, or implement SQL table
-            return [];
+            return await mssqlDb.select().from(technicians).orderBy(desc(technicians.createdAt)) as unknown as TTechnician[];
         }
     },
 
-    async saveServiceParts(orderCase: string, parts: Partial<NewServicePart>[]) {
+    async createTechnician(data: TNewTechnician) {
+        if (isAirtable) {
+            const cleaned = cleanDataForAirtable(data as unknown as Record<string, unknown>);
+            const record = await airtableBase(TABLES.TECHNICIANS).create(cleaned) as unknown as { id: string, fields: FieldSet };
+            return { id: record.id, ...record.fields } as unknown as TTechnician;
+        } else {
+            await mssqlDb.insert(technicians).values(data as typeof technicians.$inferInsert);
+            const [tech] = await mssqlDb.select().from(technicians).orderBy(desc(technicians.id));
+            return tech as unknown as TTechnician;
+        }
+    },
+
+    async updateTechnician(id: string | number, data: Partial<TNewTechnician>) {
+        if (isAirtable) {
+            const cleaned = cleanDataForAirtable(data as unknown as Record<string, unknown>);
+            delete (cleaned as Record<string, unknown>).id;
+            const record = await airtableBase(TABLES.TECHNICIANS).update(id.toString(), cleaned) as unknown as { id: string, fields: FieldSet };
+            return { id: record.id, ...record.fields } as unknown as TTechnician;
+        } else {
+            await mssqlDb.update(technicians).set(data as Partial<typeof technicians.$inferInsert>).where(eq(technicians.id, Number(id)));
+            const [tech] = await mssqlDb.select().from(technicians).where(eq(technicians.id, Number(id)));
+            return tech as unknown as TTechnician;
+        }
+    },
+
+    async deleteTechnician(id: string | number) {
+        if (isAirtable) {
+            await airtableBase(TABLES.TECHNICIANS).destroy(id.toString());
+            return { success: true };
+        } else {
+            await mssqlDb.delete(technicians).where(eq(technicians.id, Number(id)));
+            return { success: true };
+        }
+    },
+
+    async saveServiceParts(orderCase: string, parts: Partial<TNewServicePart>[]) {
         try {
             if (isAirtable) {
                 console.log(`Syncing parts for Order Case: ${orderCase}`, parts);
@@ -752,7 +811,7 @@ export const dataProvider = {
                         ...p,
                         orderCase,
                         qty: p.qty ? Number(p.qty) : 0
-                    }) as unknown as NewServicePart));
+                    }) as unknown as TNewServicePart));
                 }
             }
         } catch (error: unknown) {
@@ -762,7 +821,7 @@ export const dataProvider = {
         }
     },
 
-    async createService(data: ServiceInput & { parts?: Partial<NewServicePart>[] }) {
+    async createService(data: TServiceInput & { parts?: Partial<TNewServicePart>[] }) {
         const { parts, ...serviceData } = data;
         const input = serviceData as Record<string, unknown>;
         let order_case = (input.orderCase || input.order_case) as string | undefined;
@@ -809,9 +868,9 @@ export const dataProvider = {
             console.log("Cleaned data:", JSON.stringify(cleaned, null, 2));
             try {
                 const record = await airtableBase(TABLES.SERVICES).create(cleaned) as unknown as { id: string; fields: FieldSet };
-                result = { id: record.id, ...record.fields } as unknown as Service;
+                result = { id: record.id, ...record.fields } as unknown as TService;
             } catch (error: unknown) {
-                console.error("Airtable Create Service Error:", error);
+                console.error("Airtable Create TService Error:", error);
                 const err = error as Error;
                 throw new Error(err.message || "Failed to create service in Airtable");
             }
@@ -823,7 +882,7 @@ export const dataProvider = {
                 warrantyId: data.warrantyId ? Number(data.warrantyId) : null,
                 entryTime: new Date(data.entryTime),
                 exitTime: new Date(data.exitTime)
-            } as NewService);
+            } as TNewService);
             result = { id: order_case, success: true };
         }
 
@@ -834,7 +893,7 @@ export const dataProvider = {
         return result;
     },
 
-    async updateService(id: string | number, data: Partial<ServiceInput> & { parts?: Partial<NewServicePart>[] }) {
+    async updateService(id: string | number, data: Partial<TServiceInput> & { parts?: Partial<TNewServicePart>[] }) {
         const { parts, ...serviceData } = data;
         let orderCase = serviceData.orderCase;
 
@@ -866,13 +925,13 @@ export const dataProvider = {
 
                 const cleaned = cleanDataForAirtable(mappedData);
                 
-                console.log(`Updating Airtable Service ${id} with:`, cleaned);
+                console.log(`Updating Airtable TService ${id} with:`, cleaned);
                 const record = await airtableBase(TABLES.SERVICES).update(id.toString(), cleaned) as unknown as { id: string; fields: FieldSet };
                 
                 if (!orderCase) {
                     orderCase = (record.fields.order_case || record.fields.orderCase) as string | undefined; // Fallbacks
                 }
-                console.log(`Updated Service Order Case: ${orderCase}`);
+                console.log(`Updated TService Order Case: ${orderCase}`);
             } catch (error: unknown) {
                 console.error("Detailed Airtable Update Error:", error);
                 const err = error as Error;
@@ -884,7 +943,7 @@ export const dataProvider = {
                 warrantyId: serviceData.warrantyId ? Number(serviceData.warrantyId) : undefined,
                 entryTime: serviceData.entryTime ? new Date(serviceData.entryTime) : undefined,
                 exitTime: serviceData.exitTime ? new Date(serviceData.exitTime) : undefined
-            } as Partial<NewService>).where(eq(services.id, Number(id)));
+            } as Partial<TNewService>).where(eq(services.id, Number(id)));
 
             if (!orderCase) {
                 const [s] = await mssqlDb.select().from(services).where(eq(services.id, Number(id)));
@@ -908,7 +967,7 @@ export const dataProvider = {
                     id: record.id,
                     ...fields,
                     productId: Array.isArray(fields.productId) ? fields.productId[0] : (fields.productId as string)
-                } as unknown as Warranty;
+                } as unknown as TWarranty;
             } catch { return null; }
         } else {
             const [w] = await mssqlDb.select().from(warranties).where(eq(warranties.id, Number(id)));
@@ -1153,7 +1212,7 @@ export const dataProvider = {
                 const thirtyDaysLater = new Date();
                 thirtyDaysLater.setDate(now.getDate() + 30);
 
-                // Warranty stats
+                // TWarranty stats
                 let warrantyActive = 0;
                 let warrantyExpired = 0;
                 let warrantyNearExpiry = 0;
@@ -1171,7 +1230,7 @@ export const dataProvider = {
                     }
                 }
 
-                // Service stats
+                // TService stats
                 let servicePending = 0;
                 let serviceCompleted = 0;
                 let serviceCancelled = 0;
