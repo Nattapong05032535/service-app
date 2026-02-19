@@ -13,6 +13,7 @@ import {
   Edit,
   Clock,
   MapPin,
+  Phone,
 } from "lucide-react";
 import Link from "next/link";
 import { cn, formatDate } from "@/lib/utils";
@@ -288,6 +289,13 @@ export default async function CompanyDetailPage(props: Props) {
                           >
                             <User className="w-4 h-4 text-primary/40" />
                             {product.contactPerson || "ไม่ได้ระบุ"}
+                          </div>
+                          <div
+                            className="flex items-center gap-2"
+                            title="เบอร์โทรศัพท์"
+                          >
+                            <Phone className="w-4 h-4 text-primary/40" />
+                            {product.phoneNumber || "ไม่ได้ระบุ"}
                           </div>
                         </div>
                       </CardContent>

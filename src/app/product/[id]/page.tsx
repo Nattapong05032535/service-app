@@ -19,6 +19,7 @@ import { cn, formatDate, formatDateTime } from "@/lib/utils";
 import { AddWarrantyDialog } from "@/components/AddWarrantyDialog";
 import AddServiceDialog from "@/components/AddServiceDialog";
 import { EditServiceDialog } from "@/components/EditServiceDialog";
+import { EditProductDialog } from "@/components/EditProductDialog";
 import { PrintWarrantyButton } from "@/components/PrintWarrantyButton";
 import {
   TProduct,
@@ -83,18 +84,21 @@ export default async function ProductDetailPage({
 
       <div className="flex flex-col md:flex-row gap-6">
         <Card className="flex-1">
-          <CardHeader className="flex flex-row items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-              <Package className="w-6 h-6" />
+          <CardHeader className="flex flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                <Package className="w-6 h-6" />
+              </div>
+              <div>
+                <CardTitle className="text-3xl font-bold">
+                  {product.name}
+                </CardTitle>
+                <p className="text-muted-foreground">
+                  Serial: {product.serialNumber}
+                </p>
+              </div>
             </div>
-            <div>
-              <CardTitle className="text-3xl font-bold">
-                {product.name}
-              </CardTitle>
-              <p className="text-muted-foreground">
-                Serial: {product.serialNumber}
-              </p>
-            </div>
+            <EditProductDialog product={product} />
           </CardHeader>
           <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div className="p-3 rounded-lg bg-slate-50 border">

@@ -31,6 +31,7 @@ export const products = mssqlTable("products", {
     serialNumber: nvarchar("serial_number", { length: 255 }).notNull(),
     purchaseDate: datetime2("purchase_date"),
     contactPerson: nvarchar("contact_person", { length: 255 }),
+    phoneNumber: nvarchar("phone_number", { length: 50 }),
     branch: nvarchar("branch", { length: 255 }),
     createdAt: datetime2("created_at").default(sql`GETDATE()`),
 });

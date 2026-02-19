@@ -54,6 +54,7 @@ export async function createProduct(formData: FormData): Promise<void> {
     const serialNumber = formData.get("serialNumber") as string;
     const purchaseDate = formData.get("purchaseDate") as string;
     const contactPerson = formData.get("contactPerson") as string;
+    const phoneNumber = formData.get("phoneNumber") as string;
     const branch = formData.get("branch") as string;
 
     await dataProvider.createProduct({
@@ -62,10 +63,38 @@ export async function createProduct(formData: FormData): Promise<void> {
         serialNumber,
         purchaseDate,
         contactPerson,
+        phoneNumber,
         branch,
     });
 
     revalidatePath(`/company/${companyId}`);
+}
+
+export async function updateProduct(formData: FormData): Promise<void> {
+    const session = await getSession();
+    if (!session) redirect("/login");
+    requirePermission(session.role, 'product', 'update');
+
+    const id = formData.get("id") as string;
+    const companyId = formData.get("companyId") as string;
+    const name = formData.get("name") as string;
+    const serialNumber = formData.get("serialNumber") as string;
+    const purchaseDate = formData.get("purchaseDate") as string;
+    const contactPerson = formData.get("contactPerson") as string;
+    const phoneNumber = formData.get("phoneNumber") as string;
+    const branch = formData.get("branch") as string;
+
+    await dataProvider.updateProduct(id, {
+        name,
+        serialNumber,
+        purchaseDate,
+        contactPerson,
+        phoneNumber,
+        branch,
+    });
+
+    revalidatePath(`/company/${companyId}`);
+    revalidatePath(`/product/${id}`);
 }
 
 export async function createWarranty(formData: FormData): Promise<void> {

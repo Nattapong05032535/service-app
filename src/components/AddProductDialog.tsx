@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, X, Package, Hash, Calendar, User, MapPin } from "lucide-react";
+import { Plus, X, Package, Hash, Calendar, User, MapPin, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createProduct } from "@/app/actions/business";
@@ -122,6 +122,17 @@ export function AddProductDialog({ companyId }: { companyId: string }) {
                                         className="h-11 rounded-xl"
                                     />
                                 </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold flex items-center gap-2">
+                                    <Phone className="w-4 h-4 text-primary/60" /> เบอร์โทรศัพท์
+                                </label>
+                                <Input
+                                    name="phoneNumber"
+                                    placeholder="ระบุเบอร์โทรศัพท์"
+                                    className="h-11 rounded-xl"
+                                />
                             </div>
 
                             <div className="pt-4 flex gap-3">
