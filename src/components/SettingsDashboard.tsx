@@ -14,8 +14,8 @@ import {
   User,
   Users,
   Shield,
-  Bell,
-  CheckCircle2,
+  // Bell,
+  // CheckCircle2,
   Trash2,
   Plus,
   Mail,
@@ -87,11 +87,14 @@ export function SettingsDashboard({
   currentUser,
   technicians,
 }: ISettingsDashboardProps) {
-  const [activeTab, setActiveTab] = useState<"general" | "team">("general");
+  const [activeTab, setActiveTab] = useState<
+    "general" | "team" | "notifications"
+  >("general");
 
   const tabs = [
     { id: "general" as const, label: "ทั่วไป", icon: User },
     { id: "team" as const, label: "ทีมช่าง/พนักงาน", icon: Users },
+    // { id: "notifications" as const, label: "การแจ้งเตือน", icon: Bell },
   ];
 
   return (
@@ -123,6 +126,7 @@ export function SettingsDashboard({
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out">
           {activeTab === "general" && <GeneralSettings user={currentUser} />}
           {activeTab === "team" && <TeamSettings technicians={technicians} />}
+          {/* {activeTab === "notifications" && <NotificationSettings />} */}
         </div>
       </main>
     </div>
@@ -178,7 +182,13 @@ function GeneralSettings({
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
                 <Badge
                   variant="secondary"
-                  className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-primary/10 text-primary border-none"
+                  className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border-none ${
+                    user.role === "Super Admin"
+                      ? "bg-red-500/10 text-red-600"
+                      : user.role === "Manager"
+                        ? "bg-blue-500/10 text-blue-600"
+                        : "bg-primary/10 text-primary"
+                  }`}
                 >
                   {user.role}
                 </Badge>
@@ -226,76 +236,113 @@ function GeneralSettings({
           </div>
         </CardContent>
       </Card>
-
-      <Card className="border-none shadow-xl bg-card/50 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="text-xl font-bold flex items-center gap-2">
-            <Bell className="w-5 h-5 text-indigo-500" /> การแจ้งเตือน
-          </CardTitle>
-          <CardDescription>
-            เลือกวิธีที่คุณต้องการรับความเคลื่อนไหวจากระบบ
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <NotificationToggle
-            title="อีเมลแจ้งเตือนงานใหม่"
-            desc="รับอีเมลทันทีเมื่อมี Service Ticket ถูกเปิดขึ้นในระบบ"
-            defaultChecked
-            icon={<Mail className="w-5 h-5" />}
-            color="bg-blue-100 text-blue-600"
-          />
-          <NotificationToggle
-            title="สรุปผลงานประจำเดือน"
-            desc="รับไฟล์ PDF สรุปภาพรวมงานซ่อมและประสิทธิภาพทีมช่างรายเดือน"
-            icon={<CheckCircle2 className="w-5 h-5" />}
-            color="bg-purple-100 text-purple-600"
-          />
-        </CardContent>
-      </Card>
     </div>
   );
 }
 
-function NotificationToggle({
-  title,
-  desc,
-  defaultChecked,
-  icon,
-  color,
-}: {
-  title: string;
-  desc: string;
-  defaultChecked?: boolean;
-  icon: React.ReactNode;
-  color: string;
-}) {
-  return (
-    <div className="flex items-center justify-between p-5 rounded-2xl border border-muted bg-background/30 hover:bg-muted/30 transition-colors group">
-      <div className="flex items-start gap-4">
-        <div
-          className={`mt-1 p-3 rounded-xl ${color} transition-transform group-hover:scale-110 duration-300`}
-        >
-          {icon}
-        </div>
-        <div>
-          <p className="font-bold text-base leading-tight">{title}</p>
-          <p className="text-sm text-muted-foreground font-medium mt-1">
-            {desc}
-          </p>
-        </div>
-      </div>
-      <div className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-        <input
-          type="checkbox"
-          defaultChecked={defaultChecked}
-          className="peer h-6 w-11 opacity-0 cursor-pointer z-10"
-        />
-        <span className="absolute inset-0 rounded-full bg-input transition-colors peer-checked:bg-primary" />
-        <span className="absolute left-1 h-4 w-4 rounded-full bg-background transition-transform peer-checked:translate-x-5" />
-      </div>
-    </div>
-  );
-}
+/**
+ * Notification Settings Section
+ */
+// function NotificationSettings() {
+//   return (
+// <Card className="border-none shadow-xl bg-card/50 backdrop-blur-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+//   <div className="h-2 bg-linear-to-r from-indigo-500 to-purple-600" />
+//   <CardHeader className="pb-4">
+//     <CardTitle className="text-2xl font-bold flex items-center gap-3">
+//       <div className="p-2 rounded-lg bg-indigo-500/10">
+//         <Bell className="w-6 h-6 text-indigo-500" />
+//       </div>
+//       การแจ้งเตือน
+//     </CardTitle>
+//     <CardDescription className="text-base text-muted-foreground ml-1">
+//       เลือกวิธีที่คุณต้องการรับความเคลื่อนไหวจากระบบ
+//     </CardDescription>
+//   </CardHeader>
+//   <CardContent className="space-y-5 p-8">
+//     <NotificationToggle
+//       title="อีเมลแจ้งเตือนงานใหม่"
+//       desc="รับอีเมลทันทีเมื่อมี Service Ticket ถูกเปิดขึ้นในระบบ"
+//       defaultChecked
+//       icon={<Mail className="w-5 h-5" />}
+//       color="bg-blue-100 text-blue-600"
+//     />
+//     <NotificationToggle
+//       title="สรุปผลงานประจำเดือน"
+//       desc="รับไฟล์ PDF สรุปภาพรวมงานซ่อมและประสิทธิภาพทีมช่างรายเดือน"
+//       icon={<CheckCircle2 className="w-5 h-5" />}
+//       color="bg-purple-100 text-purple-600"
+//     />
+//     {/* <NotificationToggle
+//       title="การแจ้งเตือนผ่านบราวเซอร์"
+//       desc="รับการแจ้งเตือนแบบ Real-time บนหน้าจอเมื่อมีการอัปเดตสถานะงาน"
+//       defaultChecked
+//       icon={<Shield className="w-5 h-5" />}
+//       color="bg-emerald-100 text-emerald-600"
+//     /> */}
+
+//     <div className="pt-6 border-t border-muted/50">
+//       <div className="flex items-center justify-between p-6 rounded-2xl bg-indigo-500/5 border border-indigo-500/10">
+//         <div className="space-y-1">
+//           <p className="font-bold text-indigo-900 dark:text-indigo-100">
+//             ต้องการปิดการแจ้งเตือนทั้งหมด?
+//           </p>
+//           <p className="text-sm text-indigo-600/70 dark:text-indigo-400/70 font-medium">
+//             คุณสามารถเลือกปิดการรับข้อมูลชั่วคราวได้ที่นี่
+//           </p>
+//         </div>
+//         <Button
+//           variant="outline"
+//           className="rounded-xl font-bold bg-white dark:bg-zinc-900 border-indigo-200"
+//         >
+//           ปิดทั้งหมด
+//         </Button>
+//       </div>
+//     </div>
+//   </CardContent>
+// </Card>
+//   );
+// }
+
+// function NotificationToggle({
+//   title,
+//   desc,
+//   defaultChecked,
+//   icon,
+//   color,
+// }: {
+//   title: string;
+//   desc: string;
+//   defaultChecked?: boolean;
+//   icon: React.ReactNode;
+//   color: string;
+// }) {
+//   return (
+//     <div className="flex items-center justify-between p-5 rounded-2xl border border-muted bg-background/30 hover:bg-muted/30 transition-colors group">
+//       <div className="flex items-start gap-4">
+//         <div
+//           className={`mt-1 p-3 rounded-xl ${color} transition-transform group-hover:scale-110 duration-300`}
+//         >
+//           {icon}
+//         </div>
+//         <div>
+//           <p className="font-bold text-base leading-tight">{title}</p>
+//           <p className="text-sm text-muted-foreground font-medium mt-1">
+//             {desc}
+//           </p>
+//         </div>
+//       </div>
+//       <div className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+//         <input
+//           type="checkbox"
+//           defaultChecked={defaultChecked}
+//           className="peer h-6 w-11 opacity-0 cursor-pointer z-10"
+//         />
+//         <span className="absolute inset-0 rounded-full bg-input transition-colors peer-checked:bg-primary" />
+//         <span className="absolute left-1 h-4 w-4 rounded-full bg-background transition-transform peer-checked:translate-x-5" />
+//       </div>
+//     </div>
+//   );
+// }
 
 /**
  * Team Management Section
@@ -511,15 +558,19 @@ function TeamSettings({ technicians }: { technicians: TTechnician[] }) {
             </div>
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-bold ml-1">สถานะพนักงาน</label>
-            <select
-              name="status"
-              defaultValue={editingTech?.status ?? "Active"}
-              className="w-full flex h-12 rounded-xl border border-input bg-background px-4 py-2 text-sm ring-offset-background focus:ring-2 focus:ring-primary/20 focus:border-primary font-bold appearance-none cursor-pointer"
-            >
-              <option value="Active">Active (พร้อมปฏิบัติงาน)</option>
-              <option value="Inactive">Inactive (พักงาน / ลาออก)</option>
-            </select>
+            <label className="text-sm font-bold ml-1 opacity-70">
+              สถานะพนักงาน
+            </label>
+            <div className="relative">
+              <select
+                disabled
+                value="Active"
+                className="w-full flex h-12 rounded-xl border border-input bg-muted/30 px-4 py-2 text-sm ring-offset-background font-bold appearance-none cursor-not-allowed opacity-80"
+              >
+                <option value="Active">Active (พร้อมปฏิบัติงาน)</option>
+              </select>
+              <input type="hidden" name="status" value="Active" />
+            </div>
           </div>
           <div className="flex justify-end gap-3 pt-6">
             <Button

@@ -10,6 +10,7 @@ export const users = mssqlTable("users", {
     username: nvarchar("username", { length: 255 }).notNull().unique(),
     password: nvarchar("password", { length: 255 }).notNull(), // Should be hashed
     email: nvarchar("email", { length: 255 }),
+    role: nvarchar("role", { length: 50 }).default("User"),
     createdAt: datetime2("created_at").default(sql`GETDATE()`),
 });
 

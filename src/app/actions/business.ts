@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { requirePermission } from "@/lib/permissions";
-import { Company, Product } from "@/types/database";
+import { TCompany, TProduct } from "@/types/database";
 
 export async function createOrUpdateCompany(formData: FormData): Promise<void> {
     const session = await getSession();
@@ -229,8 +229,8 @@ export async function getServicePartsAction(orderCase: string) {
     return await dataProvider.getServiceParts(orderCase);
 }
 
-export async function getTechniciansAction() {
-    return await dataProvider.getTechnicians();
+export async function getTechniciansAction(status?: string) {
+    return await dataProvider.getTechnicians(status);
 }
 
 export interface ImportRow {
@@ -306,7 +306,7 @@ export async function importDataAction(rows: ImportRow[]) {
                     name: companyName,
                     createdBy: session.id
                 });
-                company = newCompany as Company;
+                company = newCompany as TCompany;
             }
 
             if (!company) {
@@ -327,7 +327,7 @@ export async function importDataAction(rows: ImportRow[]) {
                 console.error("Failed to create product:", productName);
                 continue;
             }
-            const productId = (product as Product).id;
+            const productId = (product as TProduct).id;
 
             // 3. Create Warranty if End Date exists
             if (warrantyEndDate && warrantyStatus) {

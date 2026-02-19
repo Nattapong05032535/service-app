@@ -23,13 +23,13 @@ import {
   getServicePartsAction,
   getTechniciansAction,
 } from "@/app/actions/business";
-import { Service, Technician } from "@/types/database";
+import { TService, TTechnician } from "@/types/database";
 
 import { useLoading } from "@/context/LoadingContext";
 import { formatDate } from "@/lib/utils";
 
 interface EditServiceDialogProps {
-  service: Service;
+  service: TService;
   warrantyId?: string | number;
   trigger?: React.ReactNode;
 }
@@ -52,7 +52,7 @@ export function EditServiceDialog({
   const [hasParts, setHasParts] = useState(false);
   const [isLoadingParts, setIsLoadingParts] = useState(false);
 
-  const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [technicians, setTechnicians] = useState<TTechnician[]>([]);
   const [selectedTechnicians, setSelectedTechnicians] = useState<string[]>([]);
   const [isLoadingTechnicians, setIsLoadingTechnicians] = useState(false);
 
@@ -66,42 +66,42 @@ export function EditServiceDialog({
   // Fetch parts and technicians when dialog opens
   useEffect(() => {
     if (isOpen) {
-        const fetchTechnicians = async () => {
-            setIsLoadingTechnicians(true);
-            try {
-                const data = await getTechniciansAction();
-                setTechnicians(data);
-            } catch (error) {
-                console.error("Failed to fetch technicians:", error);
-            } finally {
-                setIsLoadingTechnicians(false);
-            }
-        };
-        fetchTechnicians();
-
-        if (service.orderCase) {
-            const fetchParts = async () => {
-                setIsLoadingParts(true);
-                try {
-                const data = await getServicePartsAction(service.orderCase || "");
-                if (data && data.length > 0) {
-                    setParts(
-                    data.map((p) => ({
-                        partNo: p.partNo || "",
-                        details: p.details || "",
-                        qty: String(p.qty || 0),
-                    })),
-                    );
-                    setHasParts(true);
-                }
-                } catch (error) {
-                console.error("Failed to fetch parts:", error);
-                } finally {
-                setIsLoadingParts(false);
-                }
-            };
-            fetchParts();
+      const fetchTechnicians = async () => {
+        setIsLoadingTechnicians(true);
+        try {
+          const data = await getTechniciansAction("Active");
+          setTechnicians(data);
+        } catch (error) {
+          console.error("Failed to fetch technicians:", error);
+        } finally {
+          setIsLoadingTechnicians(false);
         }
+      };
+      fetchTechnicians();
+
+      if (service.orderCase) {
+        const fetchParts = async () => {
+          setIsLoadingParts(true);
+          try {
+            const data = await getServicePartsAction(service.orderCase || "");
+            if (data && data.length > 0) {
+              setParts(
+                data.map((p) => ({
+                  partNo: p.partNo || "",
+                  details: p.details || "",
+                  qty: String(p.qty || 0),
+                })),
+              );
+              setHasParts(true);
+            }
+          } catch (error) {
+            console.error("Failed to fetch parts:", error);
+          } finally {
+            setIsLoadingParts(false);
+          }
+        };
+        fetchParts();
+      }
     }
   }, [isOpen, service.orderCase]);
 
@@ -202,10 +202,10 @@ export function EditServiceDialog({
                 name="partsjson"
                 value={JSON.stringify(hasParts ? parts : [])}
               />
-              <input 
-                type="hidden" 
-                name="techniciansJson" 
-                value={JSON.stringify(selectedTechnicians)} 
+              <input
+                type="hidden"
+                name="techniciansJson"
+                value={JSON.stringify(selectedTechnicians)}
               />
 
               <div className="grid grid-cols-2 gap-4">
@@ -244,13 +244,14 @@ export function EditServiceDialog({
 
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2">
-                  <User className="w-4 h-4 text-primary/60" /> ชื่อผู้เข้าทำ (ช่าง)
+                  <User className="w-4 h-4 text-primary/60" /> ชื่อผู้เข้าทำ
+                  (ช่าง)
                 </label>
-                
+
                 {/* Selected Technicians (Tags) */}
                 <div className="flex flex-wrap gap-2 mb-2">
                   {technicians
-                    .filter((t) => selectedTechnicians.includes(t.id))
+                    .filter((t) => selectedTechnicians.includes(String(t.id)))
                     .map((tech) => (
                       <Badge
                         key={tech.id}
@@ -262,7 +263,9 @@ export function EditServiceDialog({
                           type="button"
                           onClick={() =>
                             setSelectedTechnicians(
-                              selectedTechnicians.filter((id) => id !== tech.id)
+                              selectedTechnicians.filter(
+                                (id) => id !== String(tech.id),
+                              ),
                             )
                           }
                           className="ml-1 rounded-full p-0.5 hover:bg-primary/20 text-primary/60 hover:text-primary transition-colors"
@@ -275,34 +278,43 @@ export function EditServiceDialog({
 
                 {isLoadingTechnicians ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground p-2">
-                    <Loader2 className="w-4 h-4 animate-spin" /> กำลังโหลดรายชื่อช่าง...
+                    <Loader2 className="w-4 h-4 animate-spin" />{" "}
+                    กำลังโหลดรายชื่อช่าง...
                   </div>
                 ) : (
                   <div className="relative">
-                     <select
+                    <select
                       className="w-full h-11 rounded-xl border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring appearance-none"
                       value=""
                       onChange={(e) => {
                         const techId = e.target.value;
                         if (techId && !selectedTechnicians.includes(techId)) {
-                           setSelectedTechnicians([...selectedTechnicians, techId]);
+                          setSelectedTechnicians([
+                            ...selectedTechnicians,
+                            techId,
+                          ]);
                         }
                         // Reset select
                         e.target.value = "";
                       }}
                     >
-                      <option value="" disabled>+ เพิ่มรายชื่อช่าง...</option>
+                      <option value="" disabled>
+                        + เพิ่มรายชื่อช่าง...
+                      </option>
                       {technicians
-                        .filter((t) => !selectedTechnicians.includes(t.id))
+                        .filter(
+                          (t) => !selectedTechnicians.includes(String(t.id)),
+                        )
                         .map((tech) => (
                           <option key={tech.id} value={tech.id}>
-                            {tech.name} {tech.position ? `(${tech.position})` : ""}
+                            {tech.name}{" "}
+                            {tech.position ? `(${tech.position})` : ""}
                           </option>
                         ))}
                     </select>
-                     <div className="absolute right-3 top-3.5 pointer-events-none">
-                        <ChevronDown className="h-4 w-4 opacity-50" />
-                     </div>
+                    <div className="absolute right-3 top-3.5 pointer-events-none">
+                      <ChevronDown className="h-4 w-4 opacity-50" />
+                    </div>
                   </div>
                 )}
               </div>

@@ -724,17 +724,25 @@ export const dataProvider = {
         }
     },
 
-    async getTechnicians() {
+    async getTechnicians(status?: string) {
         if (isAirtable) {
-            const records = await airtableBase(TABLES.TECHNICIANS).select({
+            const options: { sort: { field: string, direction: 'asc' | 'desc' }[], filterByFormula?: string } = {
                 sort: [{ field: 'name', direction: 'asc' }]
-            }).all();
+            };
+            if (status) {
+                options.filterByFormula = `{status} = '${status}'`;
+            }
+            const records = await airtableBase(TABLES.TECHNICIANS).select(options).all();
             return records.map(r => ({
                 id: r.id,
                 ...r.fields
             })) as unknown as TTechnician[];
         } else {
-            return await mssqlDb.select().from(technicians).orderBy(desc(technicians.createdAt)) as unknown as TTechnician[];
+            const query = mssqlDb.select().from(technicians);
+            if (status) {
+                query.where(eq(technicians.status, status));
+            }
+            return await query.orderBy(desc(technicians.createdAt)) as unknown as TTechnician[];
         }
     },
 

@@ -7,21 +7,21 @@ import React, {
   useCallback,
   useEffect,
 } from "react";
-import { Company, ProductWithLatestWarranty } from "@/types/database";
+import { TCompany, IProductWithLatestWarranty } from "@/types/database";
 
 interface DataState {
-  companies: Company[];
-  products: ProductWithLatestWarranty[];
+  companies: TCompany[];
+  products: IProductWithLatestWarranty[];
   lastSynced: string | null;
   isSyncing: boolean;
 }
 
 interface DataContextType extends DataState {
   syncAllData: () => Promise<void>;
-  getCompany: (id: string | number) => Company | undefined;
+  getCompany: (id: string | number) => TCompany | undefined;
   getProductsByCompany: (
     companyId: string | number,
-  ) => ProductWithLatestWarranty[];
+  ) => IProductWithLatestWarranty[];
   isLoaded: boolean;
 }
 
@@ -64,8 +64,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const data = await getAllDataAction();
 
       const newState = {
-        companies: data.companies as Company[],
-        products: data.products as ProductWithLatestWarranty[],
+        companies: data.companies as TCompany[],
+        products: data.products as IProductWithLatestWarranty[],
         lastSynced: new Date().toISOString(),
         isSyncing: false,
       };

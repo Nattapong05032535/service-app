@@ -37,7 +37,11 @@ export default async function SettingsPage() {
     );
   }
 
-  const currentUser = userData as unknown as TUser & { role?: string };
+  const currentUser = userData as unknown as TUser & {
+    Role?: string;
+    role?: string;
+  };
+  const dbRole = currentUser?.role || currentUser?.Role;
 
   if (!currentUser) {
     redirect("/login");
@@ -59,7 +63,7 @@ export default async function SettingsPage() {
         currentUser={{
           id: currentUser.id,
           name: currentUser.username,
-          role: currentUser.role || session.role || "User",
+          role: session.role || dbRole || "User",
           email: currentUser.email || "No email",
         }}
         technicians={technicians}

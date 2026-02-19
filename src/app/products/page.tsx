@@ -17,7 +17,7 @@ import {
   ShieldX,
 } from "lucide-react";
 import { cn, formatDate } from "@/lib/utils";
-import { ProductWithLatestWarranty } from "@/types/database";
+import { IProductWithLatestWarranty } from "@/types/database";
 
 export default async function ProductsPage({
   searchParams,
@@ -38,7 +38,7 @@ export default async function ProductsPage({
   });
 
   // Process products with status - Use Airtable's pre-calculated fields to avoid Invalid Date issues
-  const processedProducts = allProducts.map((p: ProductWithLatestWarranty) => {
+  const processedProducts = allProducts.map((p: IProductWithLatestWarranty) => {
     let warrantyStatus = "none";
     let statusLabel = "ไม่มีข้อมูลการประกัน";
     let statusColor = "bg-slate-100 text-slate-700";
