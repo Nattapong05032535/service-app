@@ -8,6 +8,8 @@ import {
   Building2,
   Package,
   ShieldCheck,
+  MapPin,
+  Phone,
 } from "lucide-react";
 import { PrintServiceButton } from "@/components/PrintServiceButton";
 
@@ -111,18 +113,42 @@ export default async function ServicePrintPage({
               <div className="flex items-start gap-2">
                 <Building2 className="w-3.5 h-3.5 text-black shrink-0 mt-0.5" />
                 <div className="leading-tight">
-                  <p className="font-bold text-xs text-black">
+                  <p className="font-bold text-sm text-black">
                     {company?.name || "-"}
                   </p>
-                  <p className="text-[10px] text-black">
+                  <p className="text-xs text-black">
                     {company?.nameSecondary || ""}
                   </p>
                 </div>
               </div>
               {company?.taxId && (
-                <p className="text-[10px] text-black pl-5">
+                <p className="text-xs text-black pl-5">
                   Tax ID: {company.taxId}
                 </p>
+              )}
+              {product?.branch && (
+                <div className="flex items-center gap-2 pl-5">
+                  <MapPin className="w-3.5 h-3.5 text-black" />
+                  <p className="text-xs text-black">
+                    สาขา/ที่ตั้ง: {product?.branch}
+                  </p>
+                </div>
+              )}
+              {product?.contactPerson && (
+                <div className="flex items-center gap-2 pl-5">
+                  <User className="w-3.5 h-3.5 text-black" />
+                  <p className="text-xs text-black">
+                    ผู้ติดต่อ: {product?.contactPerson}
+                  </p>
+                </div>
+              )}
+              {product?.phoneNumber && (
+                <div className="flex items-center gap-2 pl-5">
+                  <Phone className="w-3.5 h-3.5 text-black" />
+                  <p className="text-xs text-black">
+                    เบอร์โทรศัพท์: {product?.phoneNumber}
+                  </p>
+                </div>
               )}
             </div>
           </div>
@@ -135,23 +161,23 @@ export default async function ServicePrintPage({
               <div className="flex items-start gap-2">
                 <Package className="w-3.5 h-3.5 text-black shrink-0 mt-0.5" />
                 <div className="leading-tight">
-                  <p className="font-bold text-xs text-black">
+                  <p className="font-bold text-sm text-black">
                     {product?.name || "-"}
                   </p>
-                  <p className="text-[10px] font-mono text-black">
+                  <p className="text-xs font-mono text-black">
                     S/N: {product?.serialNumber || "-"}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2 pl-5">
-                <Calendar className="w-3 h-3 text-black" />
-                <p className="text-[10px] text-black truncate">
+                <Calendar className="w-3.5 h-3.5 text-black" />
+                <p className="text-xs text-black truncate">
                   ซื้อเมื่อ: {formatDate(product?.purchaseDate)}
                 </p>
               </div>
               <div className="flex items-center gap-2 pl-5">
-                <ShieldCheck className="w-3 h-3 text-black" />
-                <p className="text-[10px] text-black truncate">
+                <ShieldCheck className="w-3.5 h-3.5 text-black" />
+                <p className="text-xs text-black truncate">
                   ความคุ้มครอง: {warranty?.type || "N/A"}
                 </p>
               </div>
@@ -189,9 +215,9 @@ export default async function ServicePrintPage({
               <p className="text-[9px] font-bold text-black uppercase tracking-wider mb-0.5">
                 อาการเสีย:
               </p>
-              <div className="relative min-h-[96px]">
+              <div className="relative min-h-[72px]">
                 <div className="absolute inset-0 z-0">
-                  {[1, 2, 3, 4].map((i) => (
+                  {[1, 2, 3].map((i) => (
                     <div
                       key={i}
                       className="border-b border-black w-full h-6 border-dashed opacity-30"
@@ -207,9 +233,9 @@ export default async function ServicePrintPage({
               <p className="text-[9px] font-bold text-black uppercase tracking-wider mb-0.5">
                 รายละเอียดการเข้าซ่อม:
               </p>
-              <div className="relative min-h-[96px]">
+              <div className="relative min-h-[72px]">
                 <div className="absolute inset-0 z-0">
-                  {[1, 2, 3, 4].map((i) => (
+                  {[1, 2, 3].map((i) => (
                     <div
                       key={i}
                       className="border-b border-black w-full h-6 border-dashed opacity-30"
