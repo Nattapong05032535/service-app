@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { requirePermission } from "@/lib/permissions";
-import { TCompany, TProduct } from "@/types/database";
+import { TCompany, TProduct, IServiceWithWarranty } from "@/types/database";
 
 export async function createOrUpdateCompany(formData: FormData): Promise<void> {
     const session = await getSession();
@@ -164,6 +164,58 @@ export async function createWarranty(formData: FormData): Promise<void> {
     revalidatePath(`/product/${productId}`);
 }
 
+export async function updateWarranty(formData: FormData): Promise<void> {
+    const session = await getSession();
+    if (!session) redirect("/login");
+    requirePermission(session.role, 'warranty', 'update');
+
+    const id = formData.get("id") as string;
+    const productId = formData.get("productId") as string;
+    const startDateStr = formData.get("startDate") as string;
+    const endDateStr = formData.get("endDate") as string;
+    const type = formData.get("type") as string;
+    const notes = formData.get("notes") as string;
+
+    try {
+        await dataProvider.updateWarranty(id, {
+            startDate: startDateStr,
+            endDate: endDateStr,
+            type,
+            notes: notes || "",
+        });
+
+        // If it's a PM type warranty, optionally handle updating linked services here
+        // For now, simple update of warranty details.
+        
+    } catch (e: unknown) {
+        throw new Error(e instanceof Error ? e.message : "Failed to update warranty");
+    }
+
+    revalidatePath(`/product/${productId}`);
+}
+
+export async function deleteWarranty(warrantyId: string, productId: string): Promise<void> {
+    const session = await getSession();
+    if (!session) redirect("/login");
+    requirePermission(session.role, 'warranty', 'delete');
+
+    try {
+        // Find and delete linked service cards (especially for PM)
+        const services = await dataProvider.getServicesByProduct(productId);
+        const linkedServices = services.filter((s: IServiceWithWarranty) => String(s.service.warrantyId) === String(warrantyId));
+        
+        for (const s of linkedServices) {
+            await dataProvider.deleteService(s.service.id);
+        }
+
+        await dataProvider.deleteWarranty(warrantyId);
+    } catch (e: unknown) {
+        throw new Error(e instanceof Error ? e.message : "Failed to delete warranty");
+    }
+
+    revalidatePath(`/product/${productId}`);
+}
+
 export async function createService(formData: FormData): Promise<void> {
     const session = await getSession();
     if (!session) redirect("/login");
@@ -251,6 +303,22 @@ export async function updateServiceAction(formData: FormData): Promise<void> {
         if (w) {
             revalidatePath(`/product/${(w as { productId: string | number }).productId}`);
         }
+    }
+}
+
+export async function deleteServiceAction(id: string, productId: string): Promise<void> {
+    const session = await getSession();
+    if (!session) redirect("/login");
+    requirePermission(session.role, 'service', 'delete');
+
+    try {
+        await dataProvider.deleteService(id);
+    } catch (e: unknown) {
+        throw new Error(e instanceof Error ? e.message : "Failed to delete service");
+    }
+
+    if (productId) {
+        revalidatePath(`/product/${productId}`);
     }
 }
 

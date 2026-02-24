@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   X,
   Hammer,
@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   updateServiceAction,
+  deleteServiceAction,
   getServicePartsAction,
   getTechniciansAction,
 } from "@/app/actions/business";
@@ -136,8 +137,28 @@ export function EditServiceDialog({
     });
   }
 
-  return (
-    <>
+  async function handleDelete() {
+    if (!confirm("คุณต้องการลบการ์ดงานนี้ใช่หรือไม่? ข้อมูลทั้งหมดในงานนี้จะถูกลบถาวร")) return;
+    
+    await withLoading(async () => {
+      try {
+        await deleteServiceAction(String(service.id), String(service.productId));
+        setIsOpen(false);
+      } catch (error) {
+        console.error("Failed to delete service:", error);
+      }
+    });
+  }
+
+  const triggerElement = React.isValidElement(trigger)
+    ? React.cloneElement(trigger as React.ReactElement<{ onClick?: React.MouseEventHandler }>, {
+        onClick: (e: React.MouseEvent) => {
+          const triggerProps = trigger.props as { onClick?: React.MouseEventHandler };
+          if (triggerProps?.onClick) triggerProps.onClick(e);
+          setIsOpen(true);
+        },
+      })
+    : (
       <div onClick={() => setIsOpen(true)}>
         {trigger || (
           <Button variant="outline" size="sm">
@@ -145,6 +166,11 @@ export function EditServiceDialog({
           </Button>
         )}
       </div>
+    );
+
+  return (
+    <>
+      {triggerElement}
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -473,6 +499,18 @@ export function EditServiceDialog({
                 >
                   <CheckCircle2 className="w-5 h-5" />
                   บันทึกผลการทำงาน
+                </Button>
+              </div>
+
+              <div className="pt-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full h-11 rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 gap-2"
+                  onClick={handleDelete}
+                >
+                  <Trash2 className="w-4 h-4" />
+                  ลบการ์ดงานนี้
                 </Button>
               </div>
             </form>

@@ -13,7 +13,8 @@ interface PrintWarrantyButtonProps {
 }
 
 export function PrintWarrantyButton({ warranty, product, company }: PrintWarrantyButtonProps) {
-    const handlePrint = () => {
+    const handlePrint = (e: React.MouseEvent) => {
+        e.stopPropagation();
         const printWindow = window.open('', '_blank');
         if (!printWindow) return;
 

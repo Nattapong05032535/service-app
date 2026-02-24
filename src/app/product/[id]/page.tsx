@@ -21,6 +21,7 @@ import AddServiceDialog from "@/components/AddServiceDialog";
 import { EditServiceDialog } from "@/components/EditServiceDialog";
 import { EditProductDialog } from "@/components/EditProductDialog";
 import { PrintWarrantyButton } from "@/components/PrintWarrantyButton";
+import { EditWarrantyDialog } from "@/components/EditWarrantyDialog";
 import {
   TProduct,
   TCompany,
@@ -167,62 +168,68 @@ export default async function ProductDetailPage({
                         const isExpired = wEnd < now;
 
                         return (
-                          <tr
+                          <EditWarrantyDialog
                             key={w.id}
-                            className={cn(
-                              "transition-colors",
-                              isActive
-                                ? "bg-primary/5 font-medium"
-                                : "hover:bg-slate-50/50",
-                            )}
-                          >
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-2">
-                                <div
-                                  className={cn(
-                                    "w-2 h-2 rounded-full",
-                                    isActive
-                                      ? "bg-primary animate-pulse"
-                                      : isExpired
-                                        ? "bg-slate-300"
-                                        : "bg-blue-400",
-                                  )}
-                                />
-                                {w.type}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-slate-600">
-                              {formatDate(wStart)}
-                            </td>
-                            <td className="px-6 py-4 text-slate-600">
-                              {formatDate(wEnd)}
-                            </td>
-                            <td className="px-6 py-4 text-center">
-                              <span
+                            warranty={w}
+                            productId={productId}
+                            trigger={
+                              <tr
                                 className={cn(
-                                  "px-2 py-1 rounded-full text-[10px] font-bold uppercase",
+                                  "transition-colors cursor-pointer group",
                                   isActive
-                                    ? "bg-green-100 text-green-700"
-                                    : isExpired
-                                      ? "bg-red-50 text-red-600"
-                                      : "bg-blue-50 text-blue-600",
+                                    ? "bg-primary/5 font-medium"
+                                    : "hover:bg-slate-50/50",
                                 )}
                               >
-                                {isActive
-                                  ? "ใช้งานอยู่"
-                                  : isExpired
-                                    ? "หมดอายุ"
-                                    : "รอเริ่ม"}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <PrintWarrantyButton
-                                warranty={w}
-                                product={product}
-                                company={company}
-                              />
-                            </td>
-                          </tr>
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className={cn(
+                                        "w-2 h-2 rounded-full",
+                                        isActive
+                                          ? "bg-primary animate-pulse"
+                                          : isExpired
+                                            ? "bg-slate-300"
+                                            : "bg-blue-400",
+                                      )}
+                                    />
+                                    {w.type}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 text-slate-600">
+                                  {formatDate(wStart)}
+                                </td>
+                                <td className="px-6 py-4 text-slate-600">
+                                  {formatDate(wEnd)}
+                                </td>
+                                <td className="px-6 py-4 text-center">
+                                  <span
+                                    className={cn(
+                                      "px-2 py-1 rounded-full text-[10px] font-bold uppercase",
+                                      isActive
+                                        ? "bg-green-100 text-green-700"
+                                        : isExpired
+                                          ? "bg-red-50 text-red-600"
+                                          : "bg-blue-50 text-blue-600",
+                                    )}
+                                  >
+                                    {isActive
+                                      ? "ใช้งานอยู่"
+                                      : isExpired
+                                        ? "หมดอายุ"
+                                        : "รอเริ่ม"}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                  <PrintWarrantyButton
+                                    warranty={w}
+                                    product={product}
+                                    company={company}
+                                  />
+                                </td>
+                              </tr>
+                            }
+                          />
                         );
                       })}
                   </tbody>
@@ -270,7 +277,7 @@ export default async function ProductDetailPage({
                 if (names.length > 0) displayTechnician = names.join(", ");
               }
 
-              return (
+              return ( 
                 <EditServiceDialog
                   key={service.id}
                   service={service}

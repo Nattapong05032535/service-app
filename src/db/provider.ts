@@ -984,6 +984,44 @@ export const dataProvider = {
         return { success: true };
     },
 
+    async updateWarranty(id: string | number, data: Partial<TWarrantyInput>) {
+        if (isAirtable) {
+            const cleaned = cleanDataForAirtable(data as unknown as Record<string, unknown>);
+            delete (cleaned as Record<string, unknown>).id;
+            const record = await airtableBase(TABLES.WARRANTIES).update(id.toString(), cleaned) as unknown as { id: string, fields: FieldSet };
+            return { id: record.id, ...record.fields } as unknown as TWarranty;
+        } else {
+            const { productId, startDate, endDate, ...rest } = data;
+            const updateData: Partial<typeof warranties.$inferInsert> = { ...rest };
+            if (productId) updateData.productId = Number(productId);
+            if (startDate) updateData.startDate = startDate ? new Date(startDate) : undefined;
+            if (endDate) updateData.endDate = endDate ? new Date(endDate) : undefined;
+
+            await mssqlDb.update(warranties).set(updateData).where(eq(warranties.id, Number(id)));
+            return { success: true };
+        }
+    },
+
+    async deleteWarranty(id: string | number) {
+        if (isAirtable) {
+            await airtableBase(TABLES.WARRANTIES).destroy(id.toString());
+            return { success: true };
+        } else {
+            await mssqlDb.delete(warranties).where(eq(warranties.id, Number(id)));
+            return { success: true };
+        }
+    },
+
+    async deleteService(id: string | number) {
+        if (isAirtable) {
+            await airtableBase(TABLES.SERVICES).destroy(id.toString());
+            return { success: true };
+        } else {
+            await mssqlDb.delete(services).where(eq(services.id, Number(id)));
+            return { success: true };
+        }
+    },
+
     async getWarrantyById(id: string | number) {
         if (isAirtable) {
             try {
