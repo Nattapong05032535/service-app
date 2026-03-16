@@ -11,7 +11,7 @@ export function formatDate(date: string | Date | number | null | undefined): str
         const d = new Date(date);
         if (isNaN(d.getTime())) return "-";
         return d.toLocaleDateString('en-GB');
-    } catch (e) {
+    } catch {
         return "-";
     }
 }
@@ -29,7 +29,7 @@ export function formatDateTime(date: string | Date | number | null | undefined):
             minute: '2-digit',
             hour12: false
         });
-    } catch (e) {
+    } catch {
         return "-";
     }
 }
