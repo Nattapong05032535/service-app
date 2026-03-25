@@ -211,40 +211,100 @@ export default async function ServicePrintPage({
               </div>
               <div className="font-bold">{technicianNames}</div>
             </div>
-            <div className="px-3 py-1.5 border-b border-black flex items-center gap-2">
+            <div className="px-3 py-2 border-b border-black flex items-start gap-2">
               <p className="text-sm font-bold text-black uppercase tracking-wider whitespace-nowrap shrink-0">
                 อาการเสีย:
               </p>
-              <div className="flex-1 flex items-end min-w-0 pb-0.5">
-                <p className="text-sm text-black truncate">
+              <div className="flex-1 flex flex-col min-w-0">
+                <p className="text-sm text-black break-all whitespace-pre-wrap">
                   {service.description || ""}
                 </p>
               </div>
             </div>
-            <div className="px-3 pt-2 pb-2 border-b border-black">
-              <div className="flex items-end gap-2 h-7 pb-0.5">
-                <p className="text-sm font-bold text-black uppercase tracking-wider whitespace-nowrap shrink-0">
-                  รายละเอียดการเข้าซ่อม:
-                </p>
-                <div className="flex-1 border-b border-black border-dashed h-full flex items-end">
-                  <p className="text-sm text-black truncate flex-1">
-                    {service.techService || ""}
-                  </p>
-                </div>
+            <div className="px-3 py-2 border-b border-black">
+              <p className="text-sm font-bold text-black uppercase tracking-wider mb-1.5">
+                รายละเอียดการเข้าซ่อม:
+              </p>
+              <div className="border border-black rounded-none overflow-hidden">
+                <table className="w-full text-left border-collapse table-fixed">
+                  <thead>
+                    <tr className="border-b border-black bg-gray-100 print:bg-transparent text-black">
+                      <th className="px-3 py-1.5 text-sm font-bold uppercase tracking-wider w-[20%] border-r border-black text-center">
+                        วันที่
+                      </th>
+                      <th className="px-3 py-1.5 text-sm font-bold uppercase tracking-wider w-[60%] border-r border-black">
+                        รายละเอียด
+                      </th>
+                      <th className="px-3 py-1.5 text-sm font-bold uppercase tracking-wider w-[20%] text-center">
+                        ลงชื่อช่าง
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-black">
+                    {(() => {
+                      const text = (service.techService || "").trim();
+                      let rows: { date: string; detail: string }[] = [];
+                      if (text) {
+                        const regex = /(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\s*:)/g;
+                        const parts = text.split(regex);
+                        if (parts.length === 1) {
+                          const lines = text.split('\n').filter(l => l.trim() !== '');
+                          rows = lines.length > 1 
+                            ? lines.map(l => ({ date: "", detail: l.trim() }))
+                            : [{ date: "", detail: text }];
+                        } else {
+                          if (parts[0].trim() !== '') {
+                            rows.push({ date: "", detail: parts[0].trim() });
+                          }
+                          for (let i = 1; i < parts.length; i += 2) {
+                            const dateMatch = parts[i] || "";
+                            const date = dateMatch.replace(/\s*:$/, "").trim();
+                            const detail = (parts[i+1] || "").trim();
+                            if (date || detail) {
+                              rows.push({ date, detail });
+                            }
+                          }
+                        }
+                      }
+                      
+                      const totalRows = rows.length === 0 ? 3 : rows.length;
+                      const dataRows = rows.map((row, i) => (
+                        <tr key={`tech-${i}`} className="h-7 border-b border-black">
+                          <td className="px-3 py-1 text-sm text-black border-r border-black text-center whitespace-nowrap">
+                            {row.date}
+                          </td>
+                          <td className="px-3 py-1 text-sm text-black border-r border-black break-all whitespace-pre-wrap">
+                            {row.detail}
+                          </td>
+                          <td className="px-3 py-1 text-sm text-black text-center">
+                            
+                          </td>
+                        </tr>
+                      ));
+
+                      const emptyRows = [];
+                      for (let i = rows.length; i < totalRows; i++) {
+                        emptyRows.push(
+                          <tr key={`tech-empty-${i}`} className="h-7 border-b border-black last:border-b-0">
+                            <td className="px-3 py-1 text-sm text-black border-r border-black"></td>
+                            <td className="px-3 py-1 text-sm text-black border-r border-black"></td>
+                            <td className="px-3 py-1 text-sm text-black"></td>
+                          </tr>
+                        );
+                      }
+
+                      return [...dataRows, ...emptyRows];
+                    })()}
+                  </tbody>
+                </table>
               </div>
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="border-b border-black w-full h-7 border-dashed"
-                ></div>
-              ))}
             </div>
             <div className="px-3 py-2">
               <p className="text-sm font-bold text-black uppercase tracking-wider mb-1.5">
                 รายการอะไหล่ที่เปลี่ยน:
               </p>
               <div className="border border-black rounded-none overflow-hidden">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full text-left border-collapse table-fixed">
                   <thead>
                     <tr className="border-b border-black bg-gray-100 print:bg-transparent text-black">
                       <th className="px-3 py-1.5 text-sm font-bold uppercase tracking-wider w-[20%] border-r border-black">
