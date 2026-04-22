@@ -58,6 +58,10 @@ export default async function ServicePrintPage({
                     nav { display: none !important; }
                     /* Force borders to be black */
                     * { border-color: black !important; }
+                    .print-no-break {
+                        break-inside: avoid !important;
+                        page-break-inside: avoid !important;
+                    }
                 }
             `,
         }}
@@ -70,7 +74,7 @@ export default async function ServicePrintPage({
       </div>
 
       {/* Document Content */}
-      <div className="max-w-4xl mx-auto p-6 rounded-none print:border-none print:py-10 print:px-8">
+      <div id="print-content" className="max-w-4xl mx-auto p-6 rounded-none print:border-none print:py-4 print:px-6">
         {/* Logo & Header */}
         <div className="flex justify-between items-start border-b-2 border-black pb-2 mb-4">
           <div>
@@ -370,7 +374,7 @@ export default async function ServicePrintPage({
         </div>
 
         {/* Section: Signatures (Separate Box) */}
-        <div className="border border-black rounded-none overflow-hidden uppercase tracking-tighter text-black mt-4">
+        <div className="border border-black rounded-none overflow-hidden uppercase tracking-tighter text-black mt-4 print-no-break">
           <table className="w-full text-left border-collapse text-sm">
             <tbody className="divide-y divide-black">
               {(service.type === "IN_REPAIR"
